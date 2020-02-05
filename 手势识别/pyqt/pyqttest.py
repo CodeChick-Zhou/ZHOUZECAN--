@@ -1,11 +1,14 @@
 # coding:utf-8
-
+from finger_train import *
+from video_test import *
 from PyQt5 import QtCore,QtGui,QtWidgets
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 import sys
 import qtawesome
+import picture as pic
+import cv2
 import msvcrt
 
 NumberDict = {'1': "../images/number1.png", '2': "../images/number2.png", '3': "../images/number3.png",
@@ -15,6 +18,77 @@ NumberDict = {'1': "../images/number1.png", '2': "../images/number2.png", '3': "
 
 SymbolDict = {0: "../images/加号.png", 1: "../images/减号.png" , 2: "../images/乘号.png"}
 
+# 正常大小无衬线字体
+font = cv2.FONT_HERSHEY_SIMPLEX
+fontsize = 1
+# ROI框的显示位置
+x0 = 330
+y0 = 40
+# 录制的手势图片大小
+width = 300
+height = 300
+
+# 前置摄像头判断的数值
+VideoNumber = 0
+count = 0
+
+class VideoThread(QThread):
+    timer = pyqtSignal()
+
+    def ChangeNumberImageGui(self,gui,s):
+        print("s:",s)
+        global VideoNumber
+        print("VideoNumber",VideoNumber)
+        value = int(VideoNumber)
+        print("value", value)
+        gui.ChangeNumberImage(gui.right_Number_LineEdit_1, value)
+
+
+    def Getbinary(self,frame, x0, y0, width, height, finger_model):
+        # 得到处理后的照片
+        res = pic.new_binaryMask(frame, x0, y0, width, height)
+
+        out = 0
+        """这里可以插入代码调用网络"""
+        test_image = res
+        test_image = cv.resize(test_image, (300, 300))
+        test_image = np.array(test_image, dtype='f')
+        test_image = test_image / 255.0
+        test_image = test_image.reshape([-1, 300, 300, 1])
+        pdt = finger_model.predict(test_image)
+        out = np.argmax(pdt, axis=1)
+        cv2.putText(frame, "the finger is: %d" % out, (x0, y0), font, fontsize, (0, 255, 0))  # 标注字体
+        return out
+
+    def startvideo(self,finger_model):
+        # 开启摄像头
+        global VideoNumber
+        cap = cv2.VideoCapture(0)
+        global count
+        while (True):
+            # 读帧
+            ret, frame = cap.read()
+            # 图像翻转
+            frame = cv2.flip(frame, 2)
+            # 显示ROI区域  #调       用函数
+            VideoNumber = self.Getbinary(frame, x0, y0, width, height, finger_model)
+
+            count += 1
+            if count%10 == 0:
+                self.timer.emit()
+            # 等待键盘输入
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord('q'):
+                break
+            cv2.imshow("frame", frame)
+
+        cap.release()
+        cv2.destroyAllWindows()
+
+    def run(self):
+        finger_model = loadCNN()
+        finger_model.load_weights("model/model_2019_11_20_best.hdf5")
+        self.startvideo(finger_model)
 
 def is_number(s):
     try:
@@ -70,7 +144,6 @@ class MainUi(QtWidgets.QMainWindow):
         self.left_mini.clicked.connect(self.showMinimized)
         self.left_close.clicked.connect(self.close)
 
-
     # 文本修改
     def textchanged(self,right_Number_LineEdit):
         text = right_Number_LineEdit.text()
@@ -88,7 +161,6 @@ class MainUi(QtWidgets.QMainWindow):
         print("before right_Number_LineEdit_1 text:",self.right_Number_LineEdit_1.text())
         right_Number_LineEdit.setText("")
         print("after right_Number_LineEdit_1 text:", self.right_Number_LineEdit_1.text())
-
 
     def ChangeNumberImage(self,right_Number_LineEdit,number):
         filename = "../images/number"+str(number)+".png"
@@ -112,6 +184,8 @@ class MainUi(QtWidgets.QMainWindow):
         self.right_Number_LineEdit_2.setObjectName('right_Number')
         self.right_Number_LineEdit_3 = QLineEdit(self)
         self.right_Number_LineEdit_3.setObjectName('right_Number')
+        self.right_Number_LineEdit_4 = QLineEdit(self)
+        self.right_Number_LineEdit_4.setObjectName('right_Number')
 
         self.right_Number_LineEdit_1.setEchoMode(QLineEdit.NoEcho)
         self.right_Number_LineEdit_2.setEchoMode(QLineEdit.NoEcho)
@@ -129,6 +203,7 @@ class MainUi(QtWidgets.QMainWindow):
         self.right_Number_LineEdit_1.setFixedSize(140,200)
         self.right_Number_LineEdit_2.setFixedSize(140,200)
         self.right_Number_LineEdit_3.setFixedSize(140,200)
+        self.right_Number_LineEdit_4.setFixedSize(140,200)
 
         self.ChangeNumberImage(self.right_Number_LineEdit_1, 2)
         self.ChangeNumberImage(self.right_Number_LineEdit_2, 2)
@@ -156,6 +231,9 @@ class MainUi(QtWidgets.QMainWindow):
         self.right_layout.addWidget(self.right_Number_LineEdit_2, 4, 2, 4, 3)
         self.right_layout.addWidget(self.right_label2, 5, 3, 2, 2)
         self.right_layout.addWidget(self.right_Number_LineEdit_3, 4, 4, 4, 3)
+        self.right_layout.addWidget(self.right_Number_LineEdit_4, 4, 5, 4, 3)
+        # self.right_Number_LineEdit_4.setHidden(True)
+
 
         self.right_widget.setStyleSheet('''
             QWidget#right_widget{
@@ -263,10 +341,15 @@ class MainUi(QtWidgets.QMainWindow):
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)  # 设置窗口背景透明
 
 
+
 def main():
     app = QtWidgets.QApplication(sys.argv)
     gui = MainUi()
     gui.show()
+
+    videothread = VideoThread()
+    videothread.timer.connect(lambda :videothread.ChangeNumberImageGui(gui,count))
+    videothread.start()
 
     sys.exit(app.exec_())
 
