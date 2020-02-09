@@ -3,8 +3,13 @@ from PyQt5.QtCore import *
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtGui import *
 import random
+from finger_train import *
+import picture as pic
+import cv2
 import sys
 import qtawesome
+
+Model_Path = "../src/model/model_2019_11_20_best.hdf5"
 
 NumberDict = {'1': "../images/number1.png", '2': "../images/number2.png", '3': "../images/number3.png",
               '4': "../images/number4.png", '5': "../images/number5.png", '6': "../images/number6.png",
@@ -25,29 +30,156 @@ Multiplication_Table = {0 : 1, 1 : 2,  2 : 3,  3 : 4,   4 : 5,   5 : 6,   6 : 7,
                         44 : 81
                         }
 
+Multiplication_Table_Formula = { 0 : [1,1,1], 1 : [1,2,2], 2 : [1,3,3], 3 : [1,4,4], 4 : [1,5,5], 5 : [1,6,6], 6 : [1,7,7], 7 : [1,8,8], 8 : [1,9,9],
+                                 9 : [2,2,4], 10 : [2,3,6], 11 : [2,4,8], 12 : [2,5,10], 13 : [2,6,12], 14 : [2,7,14], 15 : [2,8,16], 16 : [2,9,18],
+                                 17 : [3,3,9], 18 : [3,4,12], 19 : [3,5,15], 20 : [3,6,18], 21 : [3,7,21], 22 : [3,8,24], 23 : [3,9,27],
+                                 24 : [4,4,16], 25 : [4,5,20], 26 : [4,6,24], 27 : [4,7,28], 28 : [4,8,32], 29 : [4,9,36],
+                                 30 : [5,5,25], 31 : [5,6,30], 32 : [5,7,35], 33 : [5,8,40], 34 : [5,9,45],
+                                 35 : [6,6,36], 36 : [6,7,42], 37 : [6,8,48], 38 : [6,9,54],
+                                 39 : [7,7,49], 40 : [7,8,56], 41 : [7,9,63],
+                                 42 : [8,8,64], 43 : [8,9,72],
+                                 44 : [9,9,81]
+                                 }
+
 Qmut = QMutex()
 StopFlag = False
-sec = 30
+FingerStopFlag = False
+sec = 10
+thread = 0
 class TimeWorkThread(QThread):
-
     def __init__(self):
         super().__init__()
 
+    SignalButton = pyqtSignal()  # 恢复按钮触发函数
     timer = pyqtSignal()   # 每隔1秒发送一次信号
     end = pyqtSignal()     # 计数完成后发送一次信号
     def run(self):
         Qmut.lock()        # 加锁防止出现两个线程
         global sec
+        global thread
         while True:
+            # print("***********")
             if StopFlag:
+                thread +=1
+                print("StopFlag end thread",thread)
                 break
 
             self.sleep(1)  # 休眠1秒
+            print("TimeWorkThread StopFlag",StopFlag)
             if sec == 0:
                 self.end.emit()   # 发送end信号
                 break
             self.timer.emit()   # 发送timer信号
+        self.SignalButton.emit()
         Qmut.unlock()
+
+class TimeVideoThread(QThread):
+
+    def __init__(self):
+        super().__init__()
+
+    workthread = pyqtSignal()
+    timer = pyqtSignal()   # 每隔1秒发送一次信号
+    # end = pyqtSignal()     # 计数完成后发送一次信号
+
+    def EndTime(self):
+        self.workthread.emit()
+
+    def run(self):
+        Qmut.lock()        # 加锁防止出现两个线程
+        global sec
+        sec = 10
+        self.timer.emit()  # 发送timer信号
+
+        while True:
+            # if StopFlag:
+            #     break
+
+            self.sleep(1)  # 休眠1秒
+            if sec == 0:
+                self.EndTime()
+                break
+            self.timer.emit()   # 发送timer信号
+        Qmut.unlock()
+
+
+# 正常大小无衬线字体
+font = cv2.FONT_HERSHEY_SIMPLEX
+fontsize = 1
+# ROI框的显示位置
+x0 = 330
+y0 = 40
+# 录制的手势图片大小
+width = 300
+height = 300
+
+
+class VideoThread(QThread):
+    timer = pyqtSignal(int)
+    def __init__(self):
+        super().__init__()
+        self.result = 0
+
+    def work(self):
+        self.timer.emit(int(self.result))
+
+    def Getbinary(self,frame, x0, y0, width, height, finger_model):
+        # 得到处理后的照片
+        res = pic.new_binaryMask(frame, x0, y0, width, height)
+
+        out = 0
+        """这里可以插入代码调用网络"""
+        test_image = res
+        test_image = cv.resize(test_image, (300, 300))
+        test_image = np.array(test_image, dtype='f')
+        test_image = test_image / 255.0
+        test_image = test_image.reshape([-1, 300, 300, 1])
+        pdt = finger_model.predict(test_image)
+        out = np.argmax(pdt, axis=1)
+        cv2.putText(frame, "the finger is: %d" % out, (x0, y0), font, fontsize, (0, 255, 0))  # 标注字体
+        return out
+
+    def startvideo(self,finger_model):
+        # 开启摄像头
+        cap = cv2.VideoCapture(0)
+
+        self.lst = [0] * 10
+        self.index = 0
+
+        while (True):
+            # 读帧
+            ret, frame = cap.read()
+            # 图像翻转
+            frame = cv2.flip(frame, 2)
+            # 显示ROI区域  #调用函数
+
+            # 获得图像预测的数值
+            VideoNumber = self.Getbinary(frame, x0, y0, width, height, finger_model)
+
+            if self.index != 10:
+                self.lst[self.index] = int(VideoNumber)
+            else:
+                self.index = 0
+                self.lst[self.index] = int(VideoNumber)
+
+            self.index += 1
+            self.result = np.argmax(np.bincount(self.lst))
+            print("lst",self.lst," maxnumber:",self.result)
+
+            # 等待键盘输入
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord('q'):
+                break
+            cv2.imshow("frame", frame)
+
+        cap.release()
+        cv2.destroyAllWindows()
+
+    def run(self):
+        global Model_Path
+        finger_model = loadCNN()
+        finger_model.load_weights(Model_Path)
+        self.startvideo(finger_model)
 
 def is_number(s):
     try:
@@ -87,57 +219,125 @@ class NN_Table(object):
             self.ChangeNumberTime(self.right_top_label_1,self.right_top_label_2,0,sec)
         elif sec > 9:
             a = int(sec/10)
-            print(a)
             b = sec%10
             self.ChangeNumberTime(self.right_top_label_1, self.right_top_label_2, a, b)
 
-
+    # 正常流程结束
     def end(self):
-        self.right_bottom_label_1.setPixmap(QPixmap("../images/错号.png"))
-        self.right_bottom_label_1.setScaledContents(True)
+        if self.IsTrue():
+            self.right_bottom_label_1.setPixmap(QPixmap("../images/对号.png"))
+            self.right_bottom_label_1.setScaledContents(True)  # 让图片自适应label大小
+        else:
+            self.right_bottom_label_1.setPixmap(QPixmap("../images/错号.png"))
+            self.right_bottom_label_1.setScaledContents(True)  # 让图片自适应label大小
+        # self.right_bottom_label_1.setPixmap(QPixmap("../images/错号.png"))
+        # self.right_bottom_label_1.setScaledContents(True)
         self.right_button_1.setText("下一题")
         self.ButtonFlag = False
 
+    # 开始
     def NN_Start(self):
+        # self.right_button_1.setHidden(True)
+        # self.right_button_1.setEnabled(False)
+        # self.right_button_1.clicked.disconnect()
+        self.digit = 2
         global StopFlag
         global sec
+        sec = 10
+        self.ChangeNumberTime(self.right_top_label_1, self.right_top_label_2, int(sec / 10), int(sec % 10))
 
-        sec = 30
-        self.ChangeNumberTime(self.right_top_label_1, self.right_top_label_2, int(sec/10), int(sec%10))
-
+        # Qmut.lock()
         StopFlag = False
+        # Qmut.unlock()
+
+        # self.right_button_1.clicked.connect(self.ChangeButtonStatus)
+        # self.right_button_1.setHidden(False)
+        # self.right_button_1.setEnabled(True)
+        # self.right_button_1.clicked.connect(self.ChangeButtonStatus)
+
         self.value1 = -1
         self.value2 = -1
         self.value3 = -1
         self.value4 = -1
 
-        index = random.randint(0, 44)
-        self.value = Multiplication_Table[index]
-        self.value3 = int(self.value/10)
-        self.value4 = int(self.value%10)
+        self.right_Number_LineEdit_1.setHidden(False)
+        self.right_Number_LineEdit_2.setHidden(False)
+        self.right_Number_LineEdit_3.setHidden(False)
+        self.right_Number_LineEdit_4.setHidden(False)
 
-        if self.value3 == 0:
-            self.right_Number_LineEdit_4.setHidden(True)
-            self.ChangeNumberImage(self.right_Number_LineEdit_3, self.value4)
+        index = random.randint(0,1)
+        if index == 1:
+            index = random.randint(0, 44)
+            ArrayValue = Multiplication_Table_Formula[index]
+            self.value = ArrayValue[2]
+            self.value1 = ArrayValue[0]
+            self.value2 = ArrayValue[1]
+            self.value3 = 0
+            self.value4 = 0
+
+            if int(self.value/10) == 0:
+                self.digit = 1
+                self.right_Number_LineEdit_4.setHidden(True)
+
+            self.ChangeNumberImage(self.right_Number_LineEdit_1, 1,self.value1)
+            self.ChangeNumberImage(self.right_Number_LineEdit_2, 2,self.value2)
+            self.ChangeNumberImage(self.right_Number_LineEdit_3, 3,-1)
+            self.ChangeNumberImage(self.right_Number_LineEdit_4, 4,-1)
+
+            self.right_Number_LineEdit_1.setReadOnly(True)
+            self.right_Number_LineEdit_2.setReadOnly(True)
+            self.right_Number_LineEdit_3.setReadOnly(False)
+            self.right_Number_LineEdit_4.setReadOnly(False)
+            self.NN_Table_Start()
         else:
-            self.right_Number_LineEdit_4.setHidden(False)
-            self.ChangeNumberImage(self.right_Number_LineEdit_3, self.value3)
-            self.ChangeNumberImage(self.right_Number_LineEdit_4, self.value4)
 
-        self.ChangeNumberImage(self.right_Number_LineEdit_1, -1)
-        self.ChangeNumberImage(self.right_Number_LineEdit_2, -1)
 
-        self.NN_Table_Start()
+            index = random.randint(0, 44)
+            self.value = Multiplication_Table[index]
+            self.value3 = int(self.value/10)
+            self.value4 = int(self.value%10)
+
+            if self.value3 == 0:
+                self.digit = 1
+                self.right_Number_LineEdit_4.setHidden(True)
+                self.ChangeNumberImage(self.right_Number_LineEdit_3,3,self.value4)
+            else:
+                self.right_Number_LineEdit_4.setHidden(False)
+                self.ChangeNumberImage(self.right_Number_LineEdit_3,3,self.value3)
+                self.ChangeNumberImage(self.right_Number_LineEdit_4,4,self.value4)
+
+            self.ChangeNumberImage(self.right_Number_LineEdit_1, 1,self.value1)
+            self.ChangeNumberImage(self.right_Number_LineEdit_2, 2,self.value2)
+            self.right_Number_LineEdit_1.setReadOnly(False)
+            self.right_Number_LineEdit_2.setReadOnly(False)
+            self.right_Number_LineEdit_3.setReadOnly(True)
+            self.right_Number_LineEdit_4.setReadOnly(True)
+
+            self.NN_Table_Start()
+
+    # def NN_Start(self):
+    #     self.videothread = VideoThread()
+    #     self.videothread.start()
 
     def NN_Table_Start(self):
         self.timerthread = TimeWorkThread()
         self.timerthread.timer.connect(self.countTime)
         self.timerthread.end.connect(self.end)
+        self.timerthread.SignalButton.connect(self.ButtonConnect)
         self.timerthread.start()
 
 
+
+    def NN_Table_Start_Time(self):
+        self.timerthread = TimeVideoThread()
+        self.timerthread.timer.connect(self.countTime)
+        self.timerthread.end.connect(self.end)
+        self.timerthread.start()
+
+    # 当编辑框文本发生变化时
     def textchanged(self,right_Number_LineEdit,number):
         text = right_Number_LineEdit.text()
+        print("number : ",number," ",text)
         if text == "":
             return
 
@@ -145,13 +345,17 @@ class NN_Table(object):
             right_Number_LineEdit.setText("")
             return
 
-        if number == 1:
-            self.value1 = int(text)
-        elif number == 2:
-            self.value2 = int(text)
+        # if number == 1:
+        #     self.value1 = int(text)
+        # elif number == 2:
+        #     self.value2 = int(text)
+        # elif number == 3:
+        #     self.value3 = int(text)
+        # elif number == 4:
+        #     self.value4 = int(text)
 
         if int(text)>=0 & int(text)<=9:
-            self.ChangeNumberImage(right_Number_LineEdit,int(text))
+            self.ChangeNumberImage(right_Number_LineEdit,number,int(text))
 
 
         print("before right_Number_LineEdit_1 text:",self.right_Number_LineEdit_1.text())
@@ -166,14 +370,23 @@ class NN_Table(object):
         label2.setScaledContents(True)  # 让图片自适应label大小
 
     # 改变编辑框的图片
-    def ChangeNumberImage(self,right_Number_LineEdit,number):
+    def ChangeNumberImage(self,right_Number_LineEdit,index,number):
+
         if number == -1:
             filename = "../images/空.png"
         else:
             filename = "../images/number"+str(number)+".png"
-        print("filename:",filename)
+            if index == 1:
+                self.value1 = int(number)
+            elif index == 2:
+                self.value2 = int(number)
+            elif index == 3:
+                self.value3 = int(number)
+            elif index == 4:
+                self.value4 = int(number)
+
         pal = right_Number_LineEdit.palette()
-        pal.setBrush(QPalette.Base,QBrush(QPixmap(filename).scaled(right_Number_LineEdit.size())))
+        pal.setBrush(QPalette.Base, QBrush(QPixmap(filename).scaled(right_Number_LineEdit.size())))
         right_Number_LineEdit.setAutoFillBackground(True)
         right_Number_LineEdit.setPalette(pal)
 
@@ -205,8 +418,6 @@ class NN_Table(object):
         self.right_Number_LineEdit_3.textChanged.connect(lambda: self.textchanged(self.right_Number_LineEdit_3,3))
         self.right_Number_LineEdit_4.textChanged.connect(lambda: self.textchanged(self.right_Number_LineEdit_4,4))
 
-        self.right_Number_LineEdit_3.setFocusPolicy(QtCore.Qt.NoFocus)
-        self.right_Number_LineEdit_4.setFocusPolicy(QtCore.Qt.NoFocus)
 
         self.right_button_2 = QtWidgets.QPushButton("退出", self.frame)
         self.right_button_2.clicked.connect(self.DeleteFram)
@@ -283,14 +494,25 @@ class NN_Table(object):
     # 判断公式两边是否正确
     def IsTrue(self):
         Avalue = self.value1 * self.value2
-        if Avalue == self.value:
+        if self.digit == 1:
+            Bvalue = self.value3
+        else:
+            Bvalue = self.value3 * 10 + self.value4
+
+        print("self.value1 : ", self.value1, " self.value2 : ", self.value2)
+        print("self.value3 : ", self.value3, " self.value4 : ", self.value4)
+        print("Avalue : ",Avalue, " Bvalue : ", Bvalue)
+
+        if Avalue == Bvalue:
             return True
         else:
             return False
 
+    OnceButtonFlag = True
     # 确定和下一题按钮触发的事件
     def ChangeButtonStatus(self):
         if self.ButtonFlag == True:
+            self.right_button_1.setEnabled(False)
             if self.IsTrue():
                 self.right_bottom_label_1.setPixmap(QPixmap("../images/对号.png"))
                 self.right_bottom_label_1.setScaledContents(True)  # 让图片自适应label大小
@@ -298,17 +520,55 @@ class NN_Table(object):
                 self.right_bottom_label_1.setPixmap(QPixmap("../images/错号.png"))
                 self.right_bottom_label_1.setScaledContents(True)  # 让图片自适应label大小
 
+                # 开启手势识别
+                self.videothread = VideoThread()
+                self.videothread.timer.connect(self.GetTimeVideoResult)
+                self.videothread.start()
+                self.timevideothread = TimeVideoThread()
+                self.timevideothread.timer.connect(self.countTime)
+                self.timevideothread.workthread.connect(self.videothread.work)
+                self.timevideothread.start()
+
             global StopFlag
             StopFlag = True
 
             self.right_button_1.setText("下一题")
             self.ButtonFlag = False
         else:
+            # if self.OnceButtonFlag == True:
+            #     return
+
+            # self.OnceButtonFlag = True
+            print("**************False***********")
+            # self.right_button_1.disconnect()
+            #
             self.NN_Start()
             self.right_bottom_label_1.setPixmap(QPixmap("../images/空号.png"))
             self.right_button_1.setText("确定")
             self.ButtonFlag = True
+            # self.right_button_1.disconnect()
 
+    def GetTimeVideoResult(self,result):
+        if self.right_Number_LineEdit_1.isReadOnly() == False:
+            self.ChangeNumberImage(self.right_Number_LineEdit_1,1,result)
+            self.right_Number_LineEdit_1.setReadOnly(True)
+        elif self.right_Number_LineEdit_2.isReadOnly() == False:
+            self.ChangeNumberImage(self.right_Number_LineEdit_2,2,result)
+            self.right_Number_LineEdit_2.setReadOnly(True)
+        elif self.right_Number_LineEdit_3.isReadOnly() == False:
+            self.ChangeNumberImage(self.right_Number_LineEdit_3,3,result)
+            self.right_Number_LineEdit_3.setReadOnly(True)
+        elif self.right_Number_LineEdit_4.isReadOnly() == False:
+            self.ChangeNumberImage(self.right_Number_LineEdit_4,4,result)
+            self.right_Number_LineEdit_4.setReadOnly(True)
+
+        return
+
+    def ButtonConnect(self):
+        # self.right_button_1.connect(self.ChangeButtonStatus)
+
+        self.right_button_1.setEnabled(True)
+        print("**************True***********")
     def DeleteFram(self):
         global StopFlag
         global sec
