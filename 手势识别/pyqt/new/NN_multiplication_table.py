@@ -2,13 +2,16 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtGui import *
+import copy
 import random
 from finger_train import *
 import picture as pic
 import cv2
 import sys
 import qtawesome
+from VideoWorkThread import VideoSingleton
 
+# 手势识别的模块的文件地址
 Model_Path = "../src/model/model_2019_11_20_best.hdf5"
 
 NumberDict = {'1': "../images/number1.png", '2': "../images/number2.png", '3': "../images/number3.png",
@@ -41,11 +44,21 @@ Multiplication_Table_Formula = { 0 : [1,1,1], 1 : [1,2,2], 2 : [1,3,3], 3 : [1,4
                                  44 : [9,9,81]
                                  }
 
+# 定时器加锁，防止多个线程一起运行
 Qmut = QMutex()
+
+# 按钮和超时加锁
+Button_timeout = QMutex()
+
+# 定时器停止标志
 StopFlag = False
-FingerStopFlag = False
-sec = 10
-thread = 0
+
+# 手势识别正常结束标志
+VideoThreadEnd = False
+
+# 初始化定时器时间
+sec = 30
+
 class TimeWorkThread(QThread):
     def __init__(self):
         super().__init__()
@@ -56,16 +69,15 @@ class TimeWorkThread(QThread):
     def run(self):
         Qmut.lock()        # 加锁防止出现两个线程
         global sec
-        global thread
         while True:
             # print("***********")
             if StopFlag:
-                thread +=1
-                print("StopFlag end thread",thread)
                 break
 
             self.sleep(1)  # 休眠1秒
-            print("TimeWorkThread StopFlag",StopFlag)
+
+            if StopFlag:
+                break
             if sec == 0:
                 self.end.emit()   # 发送end信号
                 break
@@ -73,113 +85,66 @@ class TimeWorkThread(QThread):
         self.SignalButton.emit()
         Qmut.unlock()
 
+# 编辑框个数
+QLineEditCount = 0
+
 class TimeVideoThread(QThread):
 
     def __init__(self):
         super().__init__()
 
-    workthread = pyqtSignal()
-    timer = pyqtSignal()   # 每隔1秒发送一次信号
+    # 手势识别定时器的结束标志
+    VideoStopFlag = False
+    SignalButton = QtCore.pyqtSignal()
+    workthread = QtCore.pyqtSignal()
+    timer = QtCore.pyqtSignal()   # 每隔1秒发送一次信号
     # end = pyqtSignal()     # 计数完成后发送一次信号
+
+    def SetVideoSingleton(self,flag):
+        self.VideoStopFlag = flag
 
     def EndTime(self):
         self.workthread.emit()
+        print("********发送信号*********")
 
     def run(self):
         Qmut.lock()        # 加锁防止出现两个线程
-        global sec
+        print("start run")
+        global sec,VideoThreadEnd,QLineEditCount
         sec = 10
         self.timer.emit()  # 发送timer信号
+        while QLineEditCount:
+            while True:
+                if self.VideoStopFlag:
+                    self.SignalButton.emit()
+                    Qmut.unlock()
+                    return
 
-        while True:
-            # if StopFlag:
-            #     break
+                self.sleep(1)  # 休眠1秒
 
-            self.sleep(1)  # 休眠1秒
-            if sec == 0:
-                self.EndTime()
-                break
-            self.timer.emit()   # 发送timer信号
+                if self.VideoStopFlag:
+                    self.SignalButton.emit()
+                    Qmut.unlock()
+                    return
+
+                if sec == 0:
+                    self.EndTime()
+                    break
+                self.timer.emit()   # 发送timer信号
+
+                if self.VideoStopFlag:
+                    self.SignalButton.emit()
+                    Qmut.unlock()
+                    return
+
+            # print("TimeVideoThread self.VideoStopFlag ", self.VideoStopFlag)
+            # print("TimeVideoThread 结束 ",sec)
+            # print("QLineEditCount ", QLineEditCount)
+            sec = 10
+            QLineEditCount -= 1
+
+        VideoThreadEnd = True
         Qmut.unlock()
-
-
-# 正常大小无衬线字体
-font = cv2.FONT_HERSHEY_SIMPLEX
-fontsize = 1
-# ROI框的显示位置
-x0 = 330
-y0 = 40
-# 录制的手势图片大小
-width = 300
-height = 300
-
-
-class VideoThread(QThread):
-    timer = pyqtSignal(int)
-    def __init__(self):
-        super().__init__()
-        self.result = 0
-
-    def work(self):
-        self.timer.emit(int(self.result))
-
-    def Getbinary(self,frame, x0, y0, width, height, finger_model):
-        # 得到处理后的照片
-        res = pic.new_binaryMask(frame, x0, y0, width, height)
-
-        out = 0
-        """这里可以插入代码调用网络"""
-        test_image = res
-        test_image = cv.resize(test_image, (300, 300))
-        test_image = np.array(test_image, dtype='f')
-        test_image = test_image / 255.0
-        test_image = test_image.reshape([-1, 300, 300, 1])
-        pdt = finger_model.predict(test_image)
-        out = np.argmax(pdt, axis=1)
-        cv2.putText(frame, "the finger is: %d" % out, (x0, y0), font, fontsize, (0, 255, 0))  # 标注字体
-        return out
-
-    def startvideo(self,finger_model):
-        # 开启摄像头
-        cap = cv2.VideoCapture(0)
-
-        self.lst = [0] * 10
-        self.index = 0
-
-        while (True):
-            # 读帧
-            ret, frame = cap.read()
-            # 图像翻转
-            frame = cv2.flip(frame, 2)
-            # 显示ROI区域  #调用函数
-
-            # 获得图像预测的数值
-            VideoNumber = self.Getbinary(frame, x0, y0, width, height, finger_model)
-
-            if self.index != 10:
-                self.lst[self.index] = int(VideoNumber)
-            else:
-                self.index = 0
-                self.lst[self.index] = int(VideoNumber)
-
-            self.index += 1
-            self.result = np.argmax(np.bincount(self.lst))
-            print("lst",self.lst," maxnumber:",self.result)
-
-            # 等待键盘输入
-            key = cv2.waitKey(1) & 0xFF
-            if key == ord('q'):
-                break
-            cv2.imshow("frame", frame)
-
-        cap.release()
-        cv2.destroyAllWindows()
-
-    def run(self):
-        global Model_Path
-        finger_model = loadCNN()
-        finger_model.load_weights(Model_Path)
-        self.startvideo(finger_model)
 
 def is_number(s):
     try:
@@ -222,38 +187,41 @@ class NN_Table(object):
             b = sec%10
             self.ChangeNumberTime(self.right_top_label_1, self.right_top_label_2, a, b)
 
-    # 正常流程结束
-    def end(self):
-        if self.IsTrue():
-            self.right_bottom_label_1.setPixmap(QPixmap("../images/对号.png"))
-            self.right_bottom_label_1.setScaledContents(True)  # 让图片自适应label大小
-        else:
-            self.right_bottom_label_1.setPixmap(QPixmap("../images/错号.png"))
-            self.right_bottom_label_1.setScaledContents(True)  # 让图片自适应label大小
-        # self.right_bottom_label_1.setPixmap(QPixmap("../images/错号.png"))
-        # self.right_bottom_label_1.setScaledContents(True)
-        self.right_button_1.setText("下一题")
-        self.ButtonFlag = False
+
+    # 线程类第一次初始化,防止信号绑定多个槽函数
+    FirstConnect = True
+    def Start(self):
+        if self.FirstConnect:
+            self.timevideothread = TimeVideoThread()
+            self.timevideothread.timer.connect(self.countTime)
+            self.timevideothread.workthread.connect(VideoSingleton.work)
+            self.timevideothread.SignalButton.connect(self.VideoButtonConnect)
+            VideoSingleton.timer.connect(self.GetTimeVideoResult)
+
+            self.timerthread = TimeWorkThread()
+            self.timerthread.timer.connect(self.countTime)
+            self.timerthread.end.connect(self.end)
+            self.timerthread.SignalButton.connect(self.ButtonConnect)
+
+            self.FirstConnect = False
+
+        self.NN_Start()
 
     # 开始
     def NN_Start(self):
-        # self.right_button_1.setHidden(True)
-        # self.right_button_1.setEnabled(False)
-        # self.right_button_1.clicked.disconnect()
         self.digit = 2
         global StopFlag
         global sec
-        sec = 10
+        sec = 15
         self.ChangeNumberTime(self.right_top_label_1, self.right_top_label_2, int(sec / 10), int(sec % 10))
+
+        # 未超时和确定按钮
+        self.Button_timeout_flag = False
 
         # Qmut.lock()
         StopFlag = False
+        self.timevideothread.SetVideoSingleton(False)
         # Qmut.unlock()
-
-        # self.right_button_1.clicked.connect(self.ChangeButtonStatus)
-        # self.right_button_1.setHidden(False)
-        # self.right_button_1.setEnabled(True)
-        # self.right_button_1.clicked.connect(self.ChangeButtonStatus)
 
         self.value1 = -1
         self.value2 = -1
@@ -266,6 +234,7 @@ class NN_Table(object):
         self.right_Number_LineEdit_4.setHidden(False)
 
         index = random.randint(0,1)
+        # [1] + [2] = [ ][ ]
         if index == 1:
             index = random.randint(0, 44)
             ArrayValue = Multiplication_Table_Formula[index]
@@ -275,27 +244,32 @@ class NN_Table(object):
             self.value3 = 0
             self.value4 = 0
 
+            self.right_Number_LineEdit_1.setReadOnly(True)
+            self.right_Number_LineEdit_2.setReadOnly(True)
+            self.right_Number_LineEdit_3.setReadOnly(False)
+            self.right_Number_LineEdit_4.setReadOnly(False)
+
             if int(self.value/10) == 0:
                 self.digit = 1
                 self.right_Number_LineEdit_4.setHidden(True)
+                self.right_Number_LineEdit_4.setReadOnly(True)
 
             self.ChangeNumberImage(self.right_Number_LineEdit_1, 1,self.value1)
             self.ChangeNumberImage(self.right_Number_LineEdit_2, 2,self.value2)
             self.ChangeNumberImage(self.right_Number_LineEdit_3, 3,-1)
             self.ChangeNumberImage(self.right_Number_LineEdit_4, 4,-1)
 
-            self.right_Number_LineEdit_1.setReadOnly(True)
-            self.right_Number_LineEdit_2.setReadOnly(True)
-            self.right_Number_LineEdit_3.setReadOnly(False)
-            self.right_Number_LineEdit_4.setReadOnly(False)
-            self.NN_Table_Start()
+        # [ ] + [ ] = [1][2]
         else:
-
-
             index = random.randint(0, 44)
             self.value = Multiplication_Table[index]
             self.value3 = int(self.value/10)
             self.value4 = int(self.value%10)
+
+            self.right_Number_LineEdit_1.setReadOnly(False)
+            self.right_Number_LineEdit_2.setReadOnly(False)
+            self.right_Number_LineEdit_3.setReadOnly(True)
+            self.right_Number_LineEdit_4.setReadOnly(True)
 
             if self.value3 == 0:
                 self.digit = 1
@@ -308,31 +282,30 @@ class NN_Table(object):
 
             self.ChangeNumberImage(self.right_Number_LineEdit_1, 1,self.value1)
             self.ChangeNumberImage(self.right_Number_LineEdit_2, 2,self.value2)
-            self.right_Number_LineEdit_1.setReadOnly(False)
-            self.right_Number_LineEdit_2.setReadOnly(False)
-            self.right_Number_LineEdit_3.setReadOnly(True)
-            self.right_Number_LineEdit_4.setReadOnly(True)
 
-            self.NN_Table_Start()
+        # 获得当前状态下各个编辑框的状态可读?
+        self.lst = [False] * 4
+        self.Changelst = [False] * 4
+        self.GetArrayLineEditRead()
+        print("NN_Start self.lst",self.lst)
+        self.NN_Table_Start()
 
-    # def NN_Start(self):
-    #     self.videothread = VideoThread()
-    #     self.videothread.start()
-
+    # 设置定时器线程的槽函数
     def NN_Table_Start(self):
-        self.timerthread = TimeWorkThread()
-        self.timerthread.timer.connect(self.countTime)
-        self.timerthread.end.connect(self.end)
-        self.timerthread.SignalButton.connect(self.ButtonConnect)
         self.timerthread.start()
+        # self.timerthread = TimeWorkThread()
+        # self.timerthread.timer.connect(self.countTime)
+        # self.timerthread.end.connect(self.end)
+        # self.timerthread.SignalButton.connect(self.ButtonConnect)
+        # self.timerthread.start()
 
 
-
-    def NN_Table_Start_Time(self):
-        self.timerthread = TimeVideoThread()
-        self.timerthread.timer.connect(self.countTime)
-        self.timerthread.end.connect(self.end)
-        self.timerthread.start()
+    # 设置定时器的槽函数
+    # def NN_Table_Start_Time(self):
+    #     self.timerthread = TimeVideoThread()
+    #     self.timerthread.timer.connect(self.countTime)
+    #     self.timerthread.end.connect(self.end)
+    #     self.timerthread.start()
 
     # 当编辑框文本发生变化时
     def textchanged(self,right_Number_LineEdit,number):
@@ -399,6 +372,8 @@ class NN_Table(object):
         self.right_Number_LineEdit_3.setObjectName('right_Number')
         self.right_Number_LineEdit_4 = QLineEdit(self.frame)
         self.right_Number_LineEdit_4.setObjectName('right_Number')
+        self.right_Number_LineEdit_5 = QLineEdit(self.frame)
+        self.right_Number_LineEdit_5.setObjectName('right_Number_LineEdit_5')
         self.right_label1 = QLabel(self.frame)
         self.right_label2 = QLabel(self.frame)
 
@@ -408,6 +383,10 @@ class NN_Table(object):
         self.right_label2.setGeometry(QtCore.QRect(550, 450, 140, 100))
         self.right_Number_LineEdit_3.setGeometry(QtCore.QRect(710, 400, 140, 200))
         self.right_Number_LineEdit_4.setGeometry(QtCore.QRect(850, 400, 140, 200))
+        self.right_Number_LineEdit_5.setGeometry(QtCore.QRect(250, 300, 650, 40))
+        self.right_Number_LineEdit_5.setAlignment(Qt.AlignCenter)
+        self.right_Number_LineEdit_5.setStyleSheet("color:white;font:40px;background:transparent;border-width:0;border-style:outset")
+        self.right_Number_LineEdit_5.setText("请填写下列空格，使得等式成立")
 
         self.right_Number_LineEdit_1.setEchoMode(QLineEdit.NoEcho)
         self.right_Number_LineEdit_2.setEchoMode(QLineEdit.NoEcho)
@@ -493,6 +472,9 @@ class NN_Table(object):
 
     # 判断公式两边是否正确
     def IsTrue(self):
+        if self.value1 == -1 or self.value2 == -1 or self.value3 == -1 or self.value4 == -1:
+            return False
+
         Avalue = self.value1 * self.value2
         if self.digit == 1:
             Bvalue = self.value3
@@ -508,72 +490,245 @@ class NN_Table(object):
         else:
             return False
 
-    OnceButtonFlag = True
+    # 正常流程结束
+    def end(self):
+        global StopFlag,sec,VideoThreadEnd
+        if self.IsTrue():
+            self.right_bottom_label_1.setPixmap(QPixmap("../images/对号.png"))
+            self.right_bottom_label_1.setScaledContents(True)  # 让图片自适应label大小
+        else:
+            Button_timeout.lock()
+            if self.Button_timeout_flag:
+                return
+            self.Button_timeout_flag = True
+            self.right_bottom_label_1.setPixmap(QPixmap("../images/错号.png"))
+            self.right_bottom_label_1.setScaledContents(True)  # 让图片自适应label大小
+
+            # 结束定时器
+            StopFlag = True
+
+            # 开启手势识别
+            VideoSingleton.SetShowFlag(True)
+
+            # 设置手势识别定时器秒数
+            sec = 12
+
+            # 填写错误之后将全部编辑框锁定
+            self.right_Number_LineEdit_1.setReadOnly(False)
+            self.right_Number_LineEdit_2.setReadOnly(False)
+            self.right_Number_LineEdit_3.setReadOnly(False)
+            self.right_Number_LineEdit_4.setReadOnly(False)
+
+            # 获得编辑框列表需要手势识别的下标
+            self.Changelst = copy.deepcopy(self.lst)
+            VideoThreadEnd = False
+            print("QLineEditCount ", QLineEditCount)
+            self.timevideothread.start()
+            Button_timeout.unlock()
+
+
+        self.right_button_1.setText("下一题")
+        self.ButtonFlag = False
+
     # 确定和下一题按钮触发的事件
     def ChangeButtonStatus(self):
+        global StopFlag,sec,VideoThreadEnd,QLineEditCount
+        print("ChangeButtonStatus")
         if self.ButtonFlag == True:
+            print("self.ButtonFlag True")
             self.right_button_1.setEnabled(False)
+            self.right_button_2.setEnabled(False)
+            StopFlag = True
             if self.IsTrue():
+                print("self.ButtonFlag True self.IsTrue() True")
                 self.right_bottom_label_1.setPixmap(QPixmap("../images/对号.png"))
                 self.right_bottom_label_1.setScaledContents(True)  # 让图片自适应label大小
             else:
+                print("self.ButtonFlag True self.IsTrue() False")
+                Button_timeout.lock()
+                if self.Button_timeout_flag:
+                    return
+                self.Button_timeout_flag = True
+
                 self.right_bottom_label_1.setPixmap(QPixmap("../images/错号.png"))
                 self.right_bottom_label_1.setScaledContents(True)  # 让图片自适应label大小
 
                 # 开启手势识别
-                self.videothread = VideoThread()
-                self.videothread.timer.connect(self.GetTimeVideoResult)
-                self.videothread.start()
-                self.timevideothread = TimeVideoThread()
-                self.timevideothread.timer.connect(self.countTime)
-                self.timevideothread.workthread.connect(self.videothread.work)
-                self.timevideothread.start()
+                VideoSingleton.SetShowFlag(True)
 
-            global StopFlag
-            StopFlag = True
+                # 设置定时器秒数
+                sec = 12
+
+                # 填写错误之后将全部编辑框锁定
+                self.right_Number_LineEdit_1.setReadOnly(False)
+                self.right_Number_LineEdit_2.setReadOnly(False)
+                self.right_Number_LineEdit_3.setReadOnly(False)
+                self.right_Number_LineEdit_4.setReadOnly(False)
+
+                # 获得编辑框列表需要手势识别的下标
+                self.Changelst = copy.deepcopy(self.lst)
+                VideoThreadEnd = False
+                # print("QLineEditCount ",QLineEditCount)
+                self.timevideothread.start()
+                Button_timeout.unlock()
+
 
             self.right_button_1.setText("下一题")
             self.ButtonFlag = False
         else:
-            # if self.OnceButtonFlag == True:
-            #     return
+            print("self.ButtonFlag False")
+            if self.IsTrue():
+                print("self.IsTrue() True")
+                self.NN_Start()
+                self.right_bottom_label_1.setPixmap(QPixmap("../images/空号.png"))
+                self.right_button_1.setText("确定")
+                self.ButtonFlag = True
+                return
 
-            # self.OnceButtonFlag = True
-            print("**************False***********")
-            # self.right_button_1.disconnect()
-            #
-            self.NN_Start()
-            self.right_bottom_label_1.setPixmap(QPixmap("../images/空号.png"))
-            self.right_button_1.setText("确定")
+            if VideoThreadEnd:
+                print("VideoThreadEnd 正常结束")
+                VideoThreadEnd = False
+                self.NN_Start()
+                self.right_bottom_label_1.setPixmap(QPixmap("../images/空号.png"))
+                self.right_button_1.setText("确定")
+            else:
+                print("No VideoThreadEnd 中断结束")
+                self.right_button_1.setEnabled(False)
+                self.right_button_2.setEnabled(False)
+                self.timevideothread.SetVideoSingleton(True)
+
             self.ButtonFlag = True
-            # self.right_button_1.disconnect()
 
+    # 手势识别中获取结果并判断结果和流程
+    GetCount = 0
     def GetTimeVideoResult(self,result):
-        if self.right_Number_LineEdit_1.isReadOnly() == False:
-            self.ChangeNumberImage(self.right_Number_LineEdit_1,1,result)
-            self.right_Number_LineEdit_1.setReadOnly(True)
-        elif self.right_Number_LineEdit_2.isReadOnly() == False:
-            self.ChangeNumberImage(self.right_Number_LineEdit_2,2,result)
-            self.right_Number_LineEdit_2.setReadOnly(True)
-        elif self.right_Number_LineEdit_3.isReadOnly() == False:
-            self.ChangeNumberImage(self.right_Number_LineEdit_3,3,result)
-            self.right_Number_LineEdit_3.setReadOnly(True)
-        elif self.right_Number_LineEdit_4.isReadOnly() == False:
-            self.ChangeNumberImage(self.right_Number_LineEdit_4,4,result)
-            self.right_Number_LineEdit_4.setReadOnly(True)
+        # if self.right_Number_LineEdit_1.isReadOnly() == False:
+        #     self.ChangeNumberImage(self.right_Number_LineEdit_1,1,result)
+        #     self.right_Number_LineEdit_1.setReadOnly(True)
+        # elif self.right_Number_LineEdit_2.isReadOnly() == False:
+        #     self.ChangeNumberImage(self.right_Number_LineEdit_2,2,result)
+        #     self.right_Number_LineEdit_2.setReadOnly(True)
+        # elif self.right_Number_LineEdit_3.isReadOnly() == False:
+        #     self.ChangeNumberImage(self.right_Number_LineEdit_3,3,result)
+        #     self.right_Number_LineEdit_3.setReadOnly(True)
+        # elif self.right_Number_LineEdit_4.isReadOnly() == False:
+        #     self.ChangeNumberImage(self.right_Number_LineEdit_4,4,result)
+        #     self.right_Number_LineEdit_4.setReadOnly(True)
+        self.index = -1
+        self.indexflag = True
+        global QLineEditCount,VideoThreadEnd
+        # print(self.Changelst)
+        for i in range(0,len(self.Changelst)):
+            if self.Changelst[i] == True:
+                self.Changelst[i] = False
+                self.index = i
+                break
+
+        if self.index == 0:
+            self.ChangeNumberImage(self.right_Number_LineEdit_1, 1, result)
+        elif self.index == 1:
+            self.ChangeNumberImage(self.right_Number_LineEdit_2, 2, result)
+        elif self.index == 2:
+            self.ChangeNumberImage(self.right_Number_LineEdit_3, 3, result)
+        elif self.index == 3:
+            self.ChangeNumberImage(self.right_Number_LineEdit_4, 4, result)
+
+        for i in range(self.index,len(self.Changelst)):
+            if self.Changelst[i] == True:
+                self.indexflag = False
+
+        print("GetTimeVideoResult self.index", self.indexflag)
+        if self.indexflag == True:
+            if self.IsTrue() == False:
+                print("回答错误，再来一遍")
+                self.Changelst = copy.deepcopy(self.lst)
+                print("GetTimeVideoResult self.Changelst",self.Changelst)
+                print("GetTimeVideoResult self.lst", self.lst)
+
+                Qmut.lock()
+                VideoThreadEnd = False
+                QLineEditCount = self.LineEditCount
+                Qmut.unlock()
+
+                print("QLineEdit",QLineEditCount)
+                print("VideoThreadEnd",VideoThreadEnd)
+                print("self.timevideothread.start()")
+                self.timevideothread.start()
+            else:
+                self.right_bottom_label_1.setPixmap(QPixmap("../images/对号.png"))
+                self.right_bottom_label_1.setScaledContents(True)  # 让图片自适应label大小
 
         return
 
-    def ButtonConnect(self):
-        # self.right_button_1.connect(self.ChangeButtonStatus)
+    # 获得编辑框状态数组
+    def GetArrayLineEditRead(self):
+        global QLineEditCount
+        QLineEditCount = 0
+        if self.right_Number_LineEdit_1.isReadOnly() == False:
+            self.lst[0] = True
+            QLineEditCount += 1
+            # print("right_Number_LineEdit_1")
 
+        if self.right_Number_LineEdit_2.isReadOnly() == False:
+            self.lst[1] = True
+            QLineEditCount += 1
+            # print("right_Number_LineEdit_2")
+
+        if self.right_Number_LineEdit_3.isReadOnly() == False:
+            self.lst[2] = True
+            QLineEditCount += 1
+            # print("right_Number_LineEdit_3")
+
+        if self.right_Number_LineEdit_4.isReadOnly() == False:
+            self.lst[3] = True
+            QLineEditCount += 1
+            # print("right_Number_LineEdit_4")
+
+        # print("lst ",self.lst)
+        self.LineEditCount = QLineEditCount
+
+    # 中断手势识别的定时器后触发的函数，恢复按钮同时，创建新的题目
+    def VideoButtonConnect(self):
+
+        if self.EndFlag:
+            self.EndFlag = False
+            return
+
+        print("VideoButtonConnect start")
         self.right_button_1.setEnabled(True)
-        print("**************True***********")
-    def DeleteFram(self):
-        global StopFlag
-        global sec
+        self.right_button_2.setEnabled(True)
+
+        self.NN_Start()
+        self.right_bottom_label_1.setPixmap(QPixmap("../images/空号.png"))
+        self.right_button_1.setText("确定")
         self.ButtonFlag = True
+
+    # 中断定时器触发的函数，恢复按钮
+    def ButtonConnect(self):
+        print("ButtonConnect start")
+        self.right_button_1.setEnabled(True)
+        self.right_button_2.setEnabled(True)
+
+    # 退出按钮触发函数，初始化各个参数
+    EndFlag = False
+    def DeleteFram(self):
+        global sec,VideoThreadEnd,StopFlag
+        # 设置退出标志为True
+        self.EndFlag = True
+
+        # 手势识别非正常结束
+        VideoThreadEnd = False
+
+        # 初始化按钮标志
+        self.ButtonFlag = True
+        self.right_button_1.setText("确定")
+
+        # 定时器结束标志
         StopFlag = True
+        # 手势识别定时器结束标志
+        VideoSingleton.SetShowFlag(False)
+        self.timevideothread.SetVideoSingleton(True)
         self.right_bottom_label_1.setPixmap(QPixmap("../images/空号.png"))
         self.ChangeNumberTime(self.right_top_label_1, self.right_top_label_2, int(sec/10), int(sec%10))
+
 

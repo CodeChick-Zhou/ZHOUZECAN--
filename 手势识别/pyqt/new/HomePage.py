@@ -4,8 +4,21 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtGui import *
 import sys
 import qtawesome
+import time
 from NN_multiplication_table import NN_Table
+from VideoWorkThread import VideoSingleton
 
+
+
+class SleepThread(QThread):
+    def __init__(self):
+        super().__init__()
+
+
+    timer = pyqtSignal()
+    def run(self):
+        time.sleep(0.8)
+        self.timer.emit()
 
 
 class logindialog(QWidget):
@@ -25,8 +38,16 @@ class logindialog(QWidget):
         self.m_flag = False
         self.setCursor(QCursor(Qt.ArrowCursor))
 
+
+    def initThread(self):
+        self.Sleepthread = SleepThread()
+        self.Sleepthread.timer.connect(self.ButtonConnect)
+
     def __init__(self):
         super().__init__()
+
+        self.initThread()
+
         self.setWindowTitle('首页')
         self.resize(1200, 900)
         self.setFixedSize(self.width(), self.height())
@@ -36,8 +57,8 @@ class logindialog(QWidget):
 
         self.setWindowFlag(QtCore.Qt.FramelessWindowHint)  # 隐藏边框
 
-        # self.setWindowOpacity(0.9)  # 设置窗口透明度
-        # self.setAttribute(QtCore.Qt.WA_TranslucentBackground)  # 设置窗口背景透明
+        self.setWindowOpacity(0.9)  # 设置窗口透明度
+        self.setAttribute(QtCore.Qt.WA_TranslucentBackground)  # 设置窗口背景透明
 
         self.frame = QWidget(self)
         self.frame.resize(1200, 900)
@@ -74,11 +95,13 @@ class logindialog(QWidget):
         self.verticalLayout.setContentsMargins(0, 0, 0, 0)
         self.verticalLayout.setObjectName("ButtonLayout")
 
+
         self.pushButton_1 = QtWidgets.QPushButton("九九乘法表",self.verticalLayoutWidget)
         self.pushButton_1.setObjectName("HomeButton")
         self.pushButton_1.setIcon(QIcon("../images/算法.png"))
         self.pushButton_1.setFixedSize(300,40)
         self.verticalLayout.addWidget(self.pushButton_1)
+
 
         self.pushButton_2 = QtWidgets.QPushButton("随机练习",self.verticalLayoutWidget)
         self.pushButton_2.setObjectName("HomeButton")
@@ -165,13 +188,15 @@ class logindialog(QWidget):
         self.pushButton_1.clicked.connect(self.on_pushButton_enter_clicked_1)
         self.pushButton_2.clicked.connect(self.on_pushButton_enter_clicked_2)
         self.pushButton_3.clicked.connect(self.on_pushButton_enter_clicked_3)
-        self.Widget1.right_button_2.clicked.connect(self.on_pushButton_enter_clicked)
+        self.Widget1.right_button_2.clicked.connect(self.on_pushButton_enter_clicked_sleep)
         self.pushButton_quit_2.clicked.connect(self.on_pushButton_enter_clicked)
         self.pushButton_quit_3.clicked.connect(self.on_pushButton_enter_clicked)
 
+        VideoSingleton.start()
+
     def on_pushButton_enter_clicked_1(self):
         self.Widget1.frame.setVisible(True)
-        self.Widget1.NN_Start()
+        self.Widget1.Start()
         self.frame2.setVisible(False)
         self.frame3.setVisible(False)
         self.frame.setVisible(False)
@@ -193,6 +218,16 @@ class logindialog(QWidget):
         self.frame2.setVisible(False)
         self.frame3.setVisible(False)
         self.frame.setVisible(True)
+
+    def on_pushButton_enter_clicked_sleep(self):
+        self.Widget1.right_button_1.setEnabled(False)
+        self.Widget1.right_button_2.setEnabled(False)
+        self.Sleepthread.start()
+
+    def ButtonConnect(self):
+        self.on_pushButton_enter_clicked()
+        self.Widget1.right_button_1.setEnabled(True)
+        self.Widget1.right_button_2.setEnabled(True)
 
 
 if __name__ == "__main__":
