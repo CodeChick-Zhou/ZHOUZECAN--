@@ -54,7 +54,7 @@ Multiplication_Table_Pre = { 1 : [[1,1]], 2 : [[1,2]], 3 : [[1,3]], 4 : [[2,2],[
                              }
 
 # 定时器加锁，防止多个线程一起运行
-Qmut = QMutex()
+QmutNN = QMutex()
 
 # 按钮和超时加锁
 Button_timeout = QMutex()
@@ -76,7 +76,8 @@ class TimeWorkThread(QThread):
     timer = pyqtSignal()   # 每隔1秒发送一次信号
     end = pyqtSignal()     # 计数完成后发送一次信号
     def run(self):
-        Qmut.lock()        # 加锁防止出现两个线程
+        print("九九乘法表 TimeWorkThread RUN")
+        QmutNN.lock()        # 加锁防止出现两个线程
         global sec
         while True:
             # print("***********")
@@ -92,7 +93,8 @@ class TimeWorkThread(QThread):
                 break
             self.timer.emit()   # 发送timer信号
         self.SignalButton.emit()
-        Qmut.unlock()
+        print("九九乘法表 TimeWorkThread END")
+        QmutNN.unlock()
 
 # 编辑框个数
 QLineEditCount = 0
@@ -113,12 +115,13 @@ class TimeVideoThread(QThread):
         self.VideoStopFlag = flag
 
     def EndTime(self):
+        print("九九乘法表 ********发送信号*********")
         self.workthread.emit()
-        print("********发送信号*********")
+        # print("********发送信号*********")
 
     def run(self):
-        Qmut.lock()        # 加锁防止出现两个线程
-        print("start run")
+        QmutNN.lock()        # 加锁防止出现两个线程
+        print("九九乘法表 TimeVideoThread RUN")
         global sec,VideoThreadEnd,QLineEditCount
         sec = 10
         self.timer.emit()  # 发送timer信号
@@ -126,14 +129,16 @@ class TimeVideoThread(QThread):
             while True:
                 if self.VideoStopFlag:
                     self.SignalButton.emit()
-                    Qmut.unlock()
+                    print(" 九九乘法表 TimeVideoThread END")
+                    QmutNN.unlock()
                     return
 
                 self.sleep(1)  # 休眠1秒
 
                 if self.VideoStopFlag:
                     self.SignalButton.emit()
-                    Qmut.unlock()
+                    print(" 九九乘法表 TimeVideoThread END")
+                    QmutNN.unlock()
                     return
 
                 if sec == 0:
@@ -143,7 +148,8 @@ class TimeVideoThread(QThread):
 
                 if self.VideoStopFlag:
                     self.SignalButton.emit()
-                    Qmut.unlock()
+                    print("九九乘法表 TimeVideoThread END")
+                    QmutNN.unlock()
                     return
 
             # print("TimeVideoThread self.VideoStopFlag ", self.VideoStopFlag)
@@ -153,7 +159,8 @@ class TimeVideoThread(QThread):
             QLineEditCount -= 1
 
         VideoThreadEnd = True
-        Qmut.unlock()
+        print("九九乘法表 TimeVideoThread END")
+        QmutNN.unlock()
 
 def is_number(s):
     try:
@@ -204,7 +211,7 @@ class NN_Table(object):
             self.timevideothread.timer.connect(self.countTime)
             self.timevideothread.workthread.connect(VideoSingleton.work)
             self.timevideothread.SignalButton.connect(self.VideoButtonConnect)
-            VideoSingleton.timer.connect(self.GetTimeVideoResult)
+            # VideoSingleton.timer.connect(self.GetTimeVideoResult)
 
             self.timerthread = TimeWorkThread()
             self.timerthread.timer.connect(self.countTime)
@@ -213,10 +220,16 @@ class NN_Table(object):
 
             self.FirstConnect = False
 
+        print("VideoSingleton.timer.disconnect()")
+        VideoSingleton.timer.connect(self.GetTimeVideoResult)
+        # VideoSingleton.timer.connect(self.GetTimeVideoResult)
+        print("VideoSingleton.timer.connect(self.GetTimeVideoResult)")
+
         self.NN_Start()
 
     # 开始
     def NN_Start(self):
+        print("九九乘法 NN_Start()")
         self.digit = 2
         global StopFlag
         global sec
@@ -226,8 +239,14 @@ class NN_Table(object):
         # 未超时和确定按钮
         self.Button_timeout_flag = False
 
+        # 退出标志
+        self.EndFlag = False
+
+        # 设置无对错图片
+        self.right_bottom_label_1.setPixmap(QPixmap("../images/空号.png"))
+
         # 设置提示语
-        self.right_Number_LineEdit_5.setText("请填写下列空格，使得等式成立")
+        self.right_Number_LineEdit_5.setText("请填写下列空格，使得等式成立(可以有多种答案)")
         self.right_Number_LineEdit_6.setText("")
 
         # 设置手势识别错误次数
@@ -239,10 +258,10 @@ class NN_Table(object):
         # 设置获得按钮标志的状态
         self.GetAnswerFlag = False
 
-        # Qmut.lock()
+        # QmutNN.lock()
         StopFlag = False
         self.timevideothread.SetVideoSingleton(False)
-        # Qmut.unlock()
+        # QmutNN.unlock()
 
         # 初始化各个编辑框的数值
         self.value1 = -1
@@ -310,7 +329,7 @@ class NN_Table(object):
         self.lst = [False] * 4
         self.Changelst = [False] * 4
         self.GetArrayLineEditRead()
-        print("NN_Start self.lst",self.lst)
+        print("九九乘法表 NN_Start self.lst",self.lst)
         self.NN_Table_Start()
 
     # 设置定时器线程的槽函数
@@ -325,7 +344,7 @@ class NN_Table(object):
     # 当编辑框文本发生变化时
     def textchanged(self,right_Number_LineEdit,number):
         text = right_Number_LineEdit.text()
-        print("number : ",number," ",text)
+        print("九九乘法表 number : ",number," ",text)
         if text == "":
             return
 
@@ -346,9 +365,9 @@ class NN_Table(object):
             self.ChangeNumberImage(right_Number_LineEdit,number,int(text))
 
 
-        print("before right_Number_LineEdit_1 text:",self.right_Number_LineEdit_1.text())
+        print("九九乘法表 before right_Number_LineEdit_1 text:",self.right_Number_LineEdit_1.text())
         right_Number_LineEdit.setText("")
-        print("after right_Number_LineEdit_1 text:", self.right_Number_LineEdit_1.text())
+        print("九九乘法表 after right_Number_LineEdit_1 text:", self.right_Number_LineEdit_1.text())
 
     # 线程中改变数值
     def ChangeNumberTime(self,label1,label2,a,b):
@@ -499,7 +518,7 @@ class NN_Table(object):
         # border-image: url(:../ images / screen2.jpg);
         self.frame.setStyleSheet('''
             QWidget#Frame{
-                border-image:url(../images/screen2.jpg);
+                border-image:url(../images/screen3.jpg);
                 border-top:1px solid white;
                 border-bottom:1px solid white;
                 border-right:1px solid white;
@@ -521,9 +540,9 @@ class NN_Table(object):
         else:
             Bvalue = self.value3 * 10 + self.value4
 
-        print("self.value1 : ", self.value1, " self.value2 : ", self.value2)
-        print("self.value3 : ", self.value3, " self.value4 : ", self.value4)
-        print("Avalue : ",Avalue, " Bvalue : ", Bvalue)
+        print("九九乘法表 self.value1 : ", self.value1, " self.value2 : ", self.value2)
+        print("九九乘法表 self.value3 : ", self.value3, " self.value4 : ", self.value4)
+        print("九九乘法表 Avalue : ",Avalue, " Bvalue : ", Bvalue)
 
         if Avalue == Bvalue:
             return True
@@ -621,9 +640,12 @@ class NN_Table(object):
         self.GetAnswerFlag = True
         self.timevideothread.SetVideoSingleton(True)
         VideoSingleton.SetShowFlag(False)
-        Qmut.lock()
+        QmutNN.lock()
         self.right_Number_LineEdit_5.setText("查看答案")
         self.right_Number_LineEdit_6.setText("正确答案如下")
+        self.right_bottom_label_1.setPixmap(QPixmap("../images/对号.png"))
+        self.right_bottom_label_1.setScaledContents(True)  # 让图片自适应label大小
+
         if self.Randomindex == 1:
             cur = self.rightvalue
             if cur <= 9:
@@ -635,7 +657,7 @@ class NN_Table(object):
         else:
             self.ChangeNumberImage(self.right_Number_LineEdit_1, 1, self.firstleftvalue)
             self.ChangeNumberImage(self.right_Number_LineEdit_2, 2, self.secondleftvalue)
-        Qmut.unlock()
+        QmutNN.unlock()
 
     # 正常流程结束
     def end(self):
@@ -677,7 +699,7 @@ class NN_Table(object):
             # 获得编辑框列表需要手势识别的下标
             self.Changelst = copy.deepcopy(self.lst)
             VideoThreadEnd = False
-            print("QLineEditCount ", QLineEditCount)
+            print("九九乘法表 QLineEditCount ", QLineEditCount)
             self.timevideothread.start()
             Button_timeout.unlock()
 
@@ -688,26 +710,26 @@ class NN_Table(object):
     # 确定和下一题按钮触发的事件
     def ChangeButtonStatus(self):
         global StopFlag,sec,VideoThreadEnd,QLineEditCount
-        print("ChangeButtonStatus")
+        print("九九乘法表 ChangeButtonStatus")
         # 确定
         if self.ButtonFlag == True:
-            print("self.ButtonFlag True")
+            print("九九乘法表 self.ButtonFlag True")
             self.right_button_1.setEnabled(False)
             self.right_button_2.setEnabled(False)
             StopFlag = True
-            Qmut.lock()
+            QmutNN.lock()
             if self.IsTrue():
                 self.right_Number_LineEdit_5.setText("恭喜你，回答正确")
                 self.right_Number_LineEdit_6.setText("")
-                print("self.ButtonFlag True self.IsTrue() True")
+                print("九九乘法表 self.ButtonFlag True self.IsTrue() True")
                 self.right_bottom_label_1.setPixmap(QPixmap("../images/对号.png"))
                 self.right_bottom_label_1.setScaledContents(True)  # 让图片自适应label大小
             else:
-                print("self.ButtonFlag True self.IsTrue() False")
+                print("九九乘法表 self.ButtonFlag True self.IsTrue() False")
                 Button_timeout.lock()
                 if self.Button_timeout_flag:
                     Button_timeout.unlock()
-                    Qmut.unlock()
+                    QmutNN.unlock()
                     return
                 self.Button_timeout_flag = True
 
@@ -742,12 +764,12 @@ class NN_Table(object):
 
             self.right_button_1.setText("下一题")
             self.ButtonFlag = False
-            Qmut.unlock()
+            QmutNN.unlock()
         # 下一题
         else:
-            print("self.ButtonFlag False")
+            print("九九乘法表 self.ButtonFlag False")
             if self.IsTrue():
-                print("self.IsTrue() True")
+                print("九九乘法表 self.IsTrue() True")
                 self.NN_Start()
                 self.right_bottom_label_1.setPixmap(QPixmap("../images/空号.png"))
                 self.right_button_1.setText("确定")
@@ -755,20 +777,20 @@ class NN_Table(object):
                 return
 
             if VideoThreadEnd:
-                print("VideoThreadEnd 正常结束")
+                print("九九乘法表 VideoThreadEnd 正常结束")
                 VideoThreadEnd = False
                 self.NN_Start()
                 self.right_bottom_label_1.setPixmap(QPixmap("../images/空号.png"))
                 self.right_button_1.setText("确定")
             else:
                 self.timevideothread.SetVideoSingleton(True)
-                Qmut.lock()
-                print("No VideoThreadEnd 中断结束")
+                QmutNN.lock()
+                print("九九乘法表 No VideoThreadEnd 中断结束")
                 self.right_button_1.setEnabled(False)
                 self.right_button_2.setEnabled(False)
                 self.right_button_3.setEnabled(False)
                 VideoSingleton.SetShowFlag(False)
-                Qmut.unlock()
+                QmutNN.unlock()
             VideoSingleton.SetShowFlag(False)
             self.ButtonFlag = True
 
@@ -798,7 +820,7 @@ class NN_Table(object):
             if self.Changelst[i] == True:
                 self.indexflag = False
 
-        print("GetTimeVideoResult self.index", self.indexflag)
+        print("九九乘法表 GetTimeVideoResult self.index", self.indexflag)
         if self.indexflag == True:
             if self.IsTrue() == False:
                 if self.ErrorCount == 1:
@@ -809,23 +831,23 @@ class NN_Table(object):
 
                 else:
                     self.ErrorCount += 1
-                    print("回答错误，重新根据提示摆出酷酷的手势")
+                    print("九九乘法表 回答错误，重新根据提示摆出酷酷的手势")
 
                     self.GetTipsValueFirst()
                     # self.right_Number_LineEdit_5.setText("回答错误，重新根据提示摆出酷酷的手势")
 
                     self.Changelst = copy.deepcopy(self.lst)
-                    print("GetTimeVideoResult self.Changelst",self.Changelst)
-                    print("GetTimeVideoResult self.lst", self.lst)
+                    print("九九乘法表 GetTimeVideoResult self.Changelst",self.Changelst)
+                    print("九九乘法表 GetTimeVideoResult self.lst", self.lst)
 
-                    Qmut.lock()
+                    QmutNN.lock()
                     VideoThreadEnd = False
                     QLineEditCount = self.LineEditCount
-                    Qmut.unlock()
+                    QmutNN.unlock()
 
-                    print("QLineEdit",QLineEditCount)
-                    print("VideoThreadEnd",VideoThreadEnd)
-                    print("self.timevideothread.start()")
+                    print("九九乘法表 QLineEdit",QLineEditCount)
+                    print("九九乘法表 VideoThreadEnd",VideoThreadEnd)
+                    print("九九乘法表 self.timevideothread.start()")
                     self.timevideothread.start()
             else:
                 self.right_Number_LineEdit_5.setText("恭喜你，回答正确")
@@ -871,7 +893,7 @@ class NN_Table(object):
             self.EndFlag = False
             return
 
-        print("VideoButtonConnect start")
+        print("九九乘法表 VideoButtonConnect start")
         self.right_button_1.setEnabled(True)
         self.right_button_2.setEnabled(True)
         self.right_button_3.setEnabled(True)
@@ -886,7 +908,7 @@ class NN_Table(object):
 
     # 中断定时器触发的函数，恢复按钮
     def ButtonConnect(self):
-        print("ButtonConnect start")
+        print("九九乘法表 ButtonConnect start")
         self.right_button_1.setEnabled(True)
         self.right_button_2.setEnabled(True)
         self.right_button_3.setEnabled(True)
@@ -894,6 +916,7 @@ class NN_Table(object):
     # 退出按钮触发函数，初始化各个参数
     EndFlag = False
     def DeleteFram(self):
+        print("九九乘法表 DeleteFram Start")
         global sec,VideoThreadEnd,StopFlag
         # 设置退出标志为True
         self.EndFlag = True
@@ -905,6 +928,10 @@ class NN_Table(object):
         self.ButtonFlag = True
         self.right_button_1.setText("确定")
 
+        print("九九乘法表 VideoSingleton.timer.disconnect(self.GetTimeVideoResult)")
+        VideoSingleton.timer.disconnect(self.GetTimeVideoResult)
+
+        print("九九乘法表 设置结束标志")
         # 定时器结束标志
         StopFlag = True
         # 手势识别定时器结束标志
@@ -912,5 +939,7 @@ class NN_Table(object):
         self.timevideothread.SetVideoSingleton(True)
         self.right_bottom_label_1.setPixmap(QPixmap("../images/空号.png"))
         self.ChangeNumberTime(self.right_top_label_1, self.right_top_label_2, int(sec/10), int(sec%10))
+
+        print("九九乘法表 DeleteFram End")
 
 
