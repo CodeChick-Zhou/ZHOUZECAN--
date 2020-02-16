@@ -6,10 +6,19 @@ import sys
 import qtawesome
 import time
 from NN_multiplication_table import NN_Table
+from Random_practice import Random_Practice
+from Examination import Examination
 from VideoWorkThread import VideoSingleton
 
 
+class HomeWorkThread(QThread):
+    timer = pyqtSignal()  # 5秒发送一次信号
 
+    def run(self):
+        self.sleep(5)
+        self.timer.emit()
+
+# 等待短暂时间使得其他定时器可以退出
 class SleepThread(QThread):
     def __init__(self):
         super().__init__()
@@ -20,8 +29,43 @@ class SleepThread(QThread):
         time.sleep(0.8)
         self.timer.emit()
 
+# 展示页面
+class AbnormityWindow(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("异形窗口")
+        self.pix = QBitmap('../images/mask2.png')
+        self.resize(self.pix.size())
+        self.setMask(self.pix)
 
-class logindialog(QWidget):
+    # def mousePressEvent(self, event):
+    #     if event.button() == Qt.LeftButton:
+    #         self.m_drag = True
+    #
+    #         self.m_DragPosition = event.globalPos() - self.pos()
+    #         self.setCursor(QCursor(Qt.OpenHandCursor))
+    #         print(event.globalPos())  #
+    #         print(event.pos())
+    #         print(self.pos())
+    #     if event.button() == Qt.RightButton:
+    #         self.close()
+    #
+    # def mouseMoveEvent(self, QMouseEvent):
+    #     if Qt.LeftButton and self.m_drag:
+    #         # 当左键移动窗体修改偏移值
+    #         # QPoint
+    #         # 实时计算窗口左上角坐标
+    #         self.move(QMouseEvent.globalPos() - self.m_DragPosition)
+    #
+    #
+    # def mouseReleaseEvent(self, QMouseEvent):
+    #     self.m_drag = False
+    #     self.setCursor(QCursor(Qt.ArrowCursor))
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.drawPixmap(0,0,self.pix.width(),self.pix.height(),QPixmap('../images/1.jpg'))
+
+class Main_ui(QWidget):
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             self.m_flag = True
@@ -57,7 +101,7 @@ class logindialog(QWidget):
 
         self.setWindowFlag(QtCore.Qt.FramelessWindowHint)  # 隐藏边框
 
-        self.setWindowOpacity(0.9)  # 设置窗口透明度
+        self.setWindowOpacity(1)  # 设置窗口透明度
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)  # 设置窗口背景透明
 
         self.frame = QWidget(self)
@@ -133,7 +177,7 @@ class logindialog(QWidget):
 
         self.frame.setStyleSheet('''
         QWidget#Fram{
-                background:QLinearGradient(x1:1, y1:1, x2:0, y2:0, stop:0 rgb(211,149,155), stop:1 rgb(191,230,186));
+                border-image:url(../images/screen4.jpg);
                 border-top:1px solid white;
                 border-bottom:1px solid white;
                 border-left:1px solid white;
@@ -161,6 +205,7 @@ class logindialog(QWidget):
         ''')
         self.frame.setVisible(True)
 
+
         self.Widget1 = NN_Table(self)
         # self.frame1 = QWidget(self)
         # self.frame1.setObjectName("Fram1")
@@ -170,68 +215,105 @@ class logindialog(QWidget):
         # self.verticalLayout1.addWidget(self.pushButton_quit_1)
         self.Widget1.frame.setVisible(False)
 
+        self.Widget2 = Random_Practice(self)
+        # self.frame2 = QWidget(self)
+        # self.verticalLayout2 = QVBoxLayout(self.frame2)
+        # self.pushButton_quit_2 = QPushButton(self.frame2)
+        # self.pushButton_quit_2.setText("回到主页面2")
+        # self.verticalLayout2.addWidget(self.pushButton_quit_2)
+        # self.frame2.setVisible(False)
+        self.Widget2.frame.setVisible(False)
 
-        self.frame2 = QWidget(self)
-        self.verticalLayout2 = QVBoxLayout(self.frame2)
-        self.pushButton_quit_2 = QPushButton(self.frame2)
-        self.pushButton_quit_2.setText("回到主页面2")
-        self.verticalLayout2.addWidget(self.pushButton_quit_2)
-        self.frame2.setVisible(False)
-
-        self.frame3 = QWidget(self)
-        self.verticalLayout3 = QVBoxLayout(self.frame3)
-        self.pushButton_quit_3 = QPushButton()
-        self.pushButton_quit_3.setText("回到主页面3")
-        self.verticalLayout3.addWidget(self.pushButton_quit_3)
-        self.frame3.setVisible(False)
+        self.Widget3 = Examination(self)
+        # self.frame3 = QWidget(self)
+        # self.verticalLayout3 = QVBoxLayout(self.frame3)
+        # self.pushButton_quit_3 = QPushButton()
+        # self.pushButton_quit_3.setText("回到主页面3")
+        # self.verticalLayout3.addWidget(self.pushButton_quit_3)
+        # self.frame3.setVisible(False)
+        self.Widget3.frame.setVisible(False)
+        self.Widget3.frame1.setVisible(False)
 
         self.pushButton_1.clicked.connect(self.on_pushButton_enter_clicked_1)
         self.pushButton_2.clicked.connect(self.on_pushButton_enter_clicked_2)
         self.pushButton_3.clicked.connect(self.on_pushButton_enter_clicked_3)
         self.Widget1.right_button_2.clicked.connect(self.on_pushButton_enter_clicked_sleep)
-        self.pushButton_quit_2.clicked.connect(self.on_pushButton_enter_clicked)
-        self.pushButton_quit_3.clicked.connect(self.on_pushButton_enter_clicked)
+        self.Widget2.right_button_2.clicked.connect(self.on_pushButton_enter_clicked_sleep2)
+        self.Widget3.pushButton_4.clicked.connect(self.on_pushButton_enter_clicked)
 
-        VideoSingleton.start()
+        # VideoSingleton.start()
 
     def on_pushButton_enter_clicked_1(self):
         self.Widget1.frame.setVisible(True)
-        self.Widget1.Start()
-        self.frame2.setVisible(False)
-        self.frame3.setVisible(False)
+        self.Widget2.frame.setVisible(False)
+        self.Widget3.frame.setVisible(False)
+        self.Widget3.frame1.setVisible(False)
         self.frame.setVisible(False)
+        print("九九乘法表")
+        self.Widget1.Start()
 
     def on_pushButton_enter_clicked_2(self):
         self.Widget1.frame.setVisible(False)
-        self.frame2.setVisible(True)
-        self.frame3.setVisible(False)
+        self.Widget2.frame.setVisible(True)
+        self.Widget3.frame.setVisible(False)
+        self.Widget3.frame1.setVisible(False)
         self.frame.setVisible(False)
+        print("随机练习")
+        self.Widget2.Start()
 
     def on_pushButton_enter_clicked_3(self):
         self.Widget1.frame.setVisible(False)
-        self.frame2.setVisible(False)
-        self.frame3.setVisible(True)
+        self.Widget2.frame.setVisible(False)
+        self.Widget3.frame.setVisible(True)
+        self.Widget3.frame1.setVisible(False)
         self.frame.setVisible(False)
 
     def on_pushButton_enter_clicked(self):
         self.Widget1.frame.setVisible(False)
-        self.frame2.setVisible(False)
-        self.frame3.setVisible(False)
+        self.Widget2.frame.setVisible(False)
+        self.Widget3.frame.setVisible(False)
+        self.Widget3.frame1.setVisible(False)
         self.frame.setVisible(True)
 
     def on_pushButton_enter_clicked_sleep(self):
         self.Widget1.right_button_1.setEnabled(False)
         self.Widget1.right_button_2.setEnabled(False)
+        self.Widget1.right_button_3.setEnabled(False)
+        self.Sleepthread.start()
+
+    def on_pushButton_enter_clicked_sleep2(self):
+        self.Widget2.right_button_1.setEnabled(False)
+        self.Widget2.right_button_2.setEnabled(False)
+        self.Widget2.right_button_3.setEnabled(False)
         self.Sleepthread.start()
 
     def ButtonConnect(self):
         self.on_pushButton_enter_clicked()
         self.Widget1.right_button_1.setEnabled(True)
         self.Widget1.right_button_2.setEnabled(True)
+        self.Widget2.right_button_1.setEnabled(True)
+        self.Widget2.right_button_2.setEnabled(True)
 
+
+# 结束首页动画，展示主页面
+def HomePage(window,main_window):
+    window.close()
+    main_window.show()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    dialog = logindialog()
-    dialog.show()
+    window = Main_ui()
+    AbWindow = AbnormityWindow()
+    # AbWindow.show()
+    window.show()
+
+    # 开始摄像头
+    VideoSingleton.start()
+    VideoSingleton.SetShowFlag(False)
+
+    # workthread = HomeWorkThread()
+    # workthread.timer.connect(lambda:HomePage(AbWindow,window))
+    # workthread.start()
+
+
     sys.exit(app.exec_())
