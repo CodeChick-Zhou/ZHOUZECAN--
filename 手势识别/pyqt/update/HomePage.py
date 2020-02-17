@@ -132,7 +132,7 @@ class Main_ui(QWidget):
 
 
         self.verticalLayoutWidget = QtWidgets.QWidget(self.frame)
-        self.verticalLayoutWidget.setGeometry(QtCore.QRect(450, 100, 300, 780))
+        self.verticalLayoutWidget.setGeometry(QtCore.QRect(450, 200, 300, 680))
         self.verticalLayoutWidget.setObjectName("ButtonWidget")
         self.verticalLayout = QtWidgets.QVBoxLayout(self.verticalLayoutWidget)
 
@@ -159,21 +159,15 @@ class Main_ui(QWidget):
         self.pushButton_3.setFixedSize(300, 40)
         self.verticalLayout.addWidget(self.pushButton_3)
 
-        self.pushButton_4 = QtWidgets.QPushButton(qtawesome.icon('fa.comment', color='white'),"反馈建议",self.verticalLayoutWidget)
+        self.pushButton_4 = QtWidgets.QPushButton(qtawesome.icon('fa.star', color='white'),"联系我们",self.verticalLayoutWidget)
         self.pushButton_4.setObjectName("HomeButton")
         self.pushButton_4.setFixedSize(300, 40)
         self.verticalLayout.addWidget(self.pushButton_4)
 
-
-        self.pushButton_5 = QtWidgets.QPushButton(qtawesome.icon('fa.star', color='white'),"联系我们",self.verticalLayoutWidget)
+        self.pushButton_5 = QtWidgets.QPushButton(qtawesome.icon('fa.question', color='white'),"遇到问题",self.verticalLayoutWidget)
         self.pushButton_5.setObjectName("HomeButton")
         self.pushButton_5.setFixedSize(300, 40)
         self.verticalLayout.addWidget(self.pushButton_5)
-
-        self.pushButton_6 = QtWidgets.QPushButton(qtawesome.icon('fa.question', color='white'),"遇到问题",self.verticalLayoutWidget)
-        self.pushButton_6.setObjectName("HomeButton")
-        self.pushButton_6.setFixedSize(300, 40)
-        self.verticalLayout.addWidget(self.pushButton_6)
 
         self.frame.setStyleSheet('''
         QWidget#Fram{
