@@ -1,3 +1,4 @@
+
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -11,8 +12,6 @@ import sys
 import qtawesome
 from VideoWorkThread import VideoSingleton
 
-# 手势识别的模块的文件地址
-Model_Path = "../src/model/model_2019_11_20_best.hdf5"
 
 NumberDict = {'1': "../images/number1.png", '2': "../images/number2.png", '3': "../images/number3.png",
               '4': "../images/number4.png", '5': "../images/number5.png", '6': "../images/number6.png",
@@ -246,6 +245,11 @@ class Random_Practice(object):
         self.right_Number_LineEdit_3.setHidden(False)
         self.right_Number_LineEdit_4.setHidden(False)
 
+        self.SetReadOnly(self.right_Number_LineEdit_1, False)
+        self.SetReadOnly(self.right_Number_LineEdit_2, False)
+        self.SetReadOnly(self.right_Number_LineEdit_3, False)
+        self.SetReadOnly(self.right_Number_LineEdit_4, False)
+
         self.Randomindex = random.randint(0,1)
         # [1] + [2] = [ ][ ]
         if self.Randomindex == 1:
@@ -257,15 +261,21 @@ class Random_Practice(object):
             self.value3 = 0
             self.value4 = 0
 
-            self.right_Number_LineEdit_1.setReadOnly(True)
-            self.right_Number_LineEdit_2.setReadOnly(True)
-            self.right_Number_LineEdit_3.setReadOnly(False)
-            self.right_Number_LineEdit_4.setReadOnly(False)
+            # self.right_Number_LineEdit_1.setReadOnly(True)
+            # self.right_Number_LineEdit_2.setReadOnly(True)
+            # self.right_Number_LineEdit_3.setReadOnly(False)
+            # self.right_Number_LineEdit_4.setReadOnly(False)
+
+            self.SetReadOnly(self.right_Number_LineEdit_1, True)
+            self.SetReadOnly(self.right_Number_LineEdit_2, True)
+            self.SetReadOnly(self.right_Number_LineEdit_3, False)
+            self.SetReadOnly(self.right_Number_LineEdit_4, False)
 
             if int(self.rightvalue/10) == 0:
                 self.digit = 1
                 self.right_Number_LineEdit_4.setHidden(True)
-                self.right_Number_LineEdit_4.setReadOnly(True)
+                # self.right_Number_LineEdit_4.setReadOnly(True)
+                self.SetReadOnly(self.right_Number_LineEdit_4, True)
 
             self.ChangeNumberImage(self.right_Number_LineEdit_1, 1,self.value1)
             self.ChangeNumberImage(self.right_Number_LineEdit_2, 2,self.value2)
@@ -279,10 +289,15 @@ class Random_Practice(object):
             self.value3 = int(self.rightvalue/10)
             self.value4 = int(self.rightvalue%10)
 
-            self.right_Number_LineEdit_1.setReadOnly(False)
-            self.right_Number_LineEdit_2.setReadOnly(False)
-            self.right_Number_LineEdit_3.setReadOnly(True)
-            self.right_Number_LineEdit_4.setReadOnly(True)
+            # self.right_Number_LineEdit_1.setReadOnly(False)
+            # self.right_Number_LineEdit_2.setReadOnly(False)
+            # self.right_Number_LineEdit_3.setReadOnly(True)
+            # self.right_Number_LineEdit_4.setReadOnly(True)
+
+            self.SetReadOnly(self.right_Number_LineEdit_1, False)
+            self.SetReadOnly(self.right_Number_LineEdit_2, False)
+            self.SetReadOnly(self.right_Number_LineEdit_3, True)
+            self.SetReadOnly(self.right_Number_LineEdit_4, True)
 
             if self.value3 == 0:
                 self.digit = 1
@@ -326,10 +341,17 @@ class Random_Practice(object):
 
         self.addRandom = random.randint(0,3)
 
-        self.right_Number_LineEdit_1.setReadOnly(False)
-        self.right_Number_LineEdit_2.setReadOnly(False)
-        self.right_Number_LineEdit_3.setReadOnly(False)
-        self.right_Number_LineEdit_4.setReadOnly(False)
+        # self.right_Number_LineEdit_1.setReadOnly(False)
+        # self.right_Number_LineEdit_2.setReadOnly(False)
+        # self.right_Number_LineEdit_3.setReadOnly(False)
+        # self.right_Number_LineEdit_4.setReadOnly(False)
+
+        self.SetReadOnly(self.right_Number_LineEdit_1, False)
+        self.SetReadOnly(self.right_Number_LineEdit_2, False)
+        self.SetReadOnly(self.right_Number_LineEdit_3, False)
+        self.SetReadOnly(self.right_Number_LineEdit_4, False)
+
+
 
         # 获得目标值
         self.addrightvalue = random.randint(2, 18)
@@ -339,9 +361,12 @@ class Random_Practice(object):
         cur = Add_Table_Pre[self.addrightvalue]
         # [] + [1] = [2][3]
         if self.addRandom == 0:
-            self.right_Number_LineEdit_2.setReadOnly(True)
-            self.right_Number_LineEdit_3.setReadOnly(True)
-            self.right_Number_LineEdit_4.setReadOnly(True)
+            # self.right_Number_LineEdit_2.setReadOnly(True)
+            # self.right_Number_LineEdit_3.setReadOnly(True)
+            # self.right_Number_LineEdit_4.setReadOnly(True)
+            self.SetReadOnly(self.right_Number_LineEdit_2,True)
+            self.SetReadOnly(self.right_Number_LineEdit_3,True)
+            self.SetReadOnly(self.right_Number_LineEdit_4,True)
             if self.addrightvalue >= 10:
                 self.addvalue1 = 0
                 self.addvalue2 = cur[self.addrightvalueindex][1]
@@ -362,9 +387,12 @@ class Random_Practice(object):
 
         # [1] + [] = [2][3]
         elif self.addRandom == 1:
-            self.right_Number_LineEdit_1.setReadOnly(True)
-            self.right_Number_LineEdit_3.setReadOnly(True)
-            self.right_Number_LineEdit_4.setReadOnly(True)
+            # self.right_Number_LineEdit_1.setReadOnly(True)
+            # self.right_Number_LineEdit_3.setReadOnly(True)
+            # self.right_Number_LineEdit_4.setReadOnly(True)
+            self.SetReadOnly(self.right_Number_LineEdit_1,True)
+            self.SetReadOnly(self.right_Number_LineEdit_3,True)
+            self.SetReadOnly(self.right_Number_LineEdit_4,True)
             if self.addrightvalue >= 10:
                 self.addvalue1 = cur[self.addrightvalueindex][0]
                 self.addvalue2 = 0
@@ -385,8 +413,10 @@ class Random_Practice(object):
 
         # [] + []  = [1][2]
         elif self.addRandom == 2:
-            self.right_Number_LineEdit_3.setReadOnly(True)
-            self.right_Number_LineEdit_4.setReadOnly(True)
+            # self.right_Number_LineEdit_3.setReadOnly(True)
+            # self.right_Number_LineEdit_4.setReadOnly(True)
+            self.SetReadOnly(self.right_Number_LineEdit_3,True)
+            self.SetReadOnly(self.right_Number_LineEdit_4,True)
             if self.addrightvalue >= 10:
                 self.addvalue1 = 0
                 self.addvalue2 = 0
@@ -398,7 +428,8 @@ class Random_Practice(object):
                 self.addvalue2 = 0
                 self.addvalue3 = int(self.addrightvalue)
                 self.addvalue4 = 0
-                self.right_Number_LineEdit_4.setReadOnly(True)
+                # self.right_Number_LineEdit_4.setReadOnly(True)
+                self.SetReadOnly(self.right_Number_LineEdit_4, True)
                 self.right_Number_LineEdit_4.setHidden(True)
 
             self.ChangeNumberImage(self.right_Number_LineEdit_1, 1, -1)
@@ -408,8 +439,10 @@ class Random_Practice(object):
 
         # [1] + [2] = [][]
         elif self.addRandom == 3:
-            self.right_Number_LineEdit_1.setReadOnly(True)
-            self.right_Number_LineEdit_2.setReadOnly(True)
+            # self.right_Number_LineEdit_1.setReadOnly(True)
+            # self.right_Number_LineEdit_2.setReadOnly(True)
+            self.SetReadOnly(self.right_Number_LineEdit_1,True)
+            self.SetReadOnly(self.right_Number_LineEdit_2,True)
             if self.addrightvalue >= 10:
                 self.addvalue1 = cur[self.addrightvalueindex][0]
                 self.addvalue2 = cur[self.addrightvalueindex][1]
@@ -421,7 +454,8 @@ class Random_Practice(object):
                 self.addvalue2 = cur[self.addrightvalueindex][1]
                 self.addvalue3 = 0
                 self.addvalue4 = 0
-                self.right_Number_LineEdit_4.setReadOnly(True)
+                # self.right_Number_LineEdit_4.setReadOnly(True)
+                self.SetReadOnly(self.right_Number_LineEdit_4, True)
                 self.right_Number_LineEdit_4.setHidden(True)
 
             self.ChangeNumberImage(self.right_Number_LineEdit_1, 1, self.addvalue1)
@@ -462,10 +496,15 @@ class Random_Practice(object):
 
         self.minusRandom = random.randint(0,3)
 
-        self.right_Number_LineEdit_1.setReadOnly(False)
-        self.right_Number_LineEdit_2.setReadOnly(False)
-        self.right_Number_LineEdit_3.setReadOnly(False)
-        self.right_Number_LineEdit_4.setReadOnly(True)
+        self.SetReadOnly(self.right_Number_LineEdit_1, False)
+        self.SetReadOnly(self.right_Number_LineEdit_2, False)
+        self.SetReadOnly(self.right_Number_LineEdit_3, False)
+        self.SetReadOnly(self.right_Number_LineEdit_4, True)
+
+        # self.right_Number_LineEdit_1.setReadOnly(False)
+        # self.right_Number_LineEdit_2.setReadOnly(False)
+        # self.right_Number_LineEdit_3.setReadOnly(False)
+        # self.right_Number_LineEdit_4.setReadOnly(True)
 
 
         # 获得目标值
@@ -477,8 +516,12 @@ class Random_Practice(object):
 
         # [] - [1] = [2]
         if self.minusRandom == 0:
-            self.right_Number_LineEdit_2.setReadOnly(True)
-            self.right_Number_LineEdit_3.setReadOnly(True)
+            # self.right_Number_LineEdit_2.setReadOnly(True)
+            # self.right_Number_LineEdit_3.setReadOnly(True)
+
+            self.SetReadOnly(self.right_Number_LineEdit_2, True)
+            self.SetReadOnly(self.right_Number_LineEdit_3, True)
+
             self.minusvalue1 = 0
             self.minusvalue2 = cur[self.minusrightvalueindex][0]
             self.minusvalue3 = cur[self.minusrightvalueindex][1]
@@ -489,8 +532,11 @@ class Random_Practice(object):
             self.ChangeNumberImage(self.right_Number_LineEdit_3, 3, self.minusvalue3)
         # [1] - [] = [2]
         elif self.minusRandom == 1:
-            self.right_Number_LineEdit_1.setReadOnly(True)
-            self.right_Number_LineEdit_3.setReadOnly(True)
+            # self.right_Number_LineEdit_1.setReadOnly(True)
+            # self.right_Number_LineEdit_3.setReadOnly(True)
+            self.SetReadOnly(self.right_Number_LineEdit_1, True)
+            self.SetReadOnly(self.right_Number_LineEdit_3, True)
+
             self.minusvalue1 = self.minusrightvalue
             self.minusvalue2 = 0
             self.minusvalue3 = cur[self.minusrightvalueindex][1]
@@ -502,7 +548,8 @@ class Random_Practice(object):
 
         # [] - [] = [2]
         elif self.minusRandom == 2:
-            self.right_Number_LineEdit_3.setReadOnly(True)
+            # self.right_Number_LineEdit_3.setReadOnly(True)
+            self.SetReadOnly(self.right_Number_LineEdit_3, True)
             self.minusvalue1 = 0
             self.minusvalue2 = 0
             self.minusvalue3 = cur[self.minusrightvalueindex][1]
@@ -514,8 +561,10 @@ class Random_Practice(object):
 
         # [1] - [2] = []
         elif self.minusRandom == 3:
-            self.right_Number_LineEdit_1.setReadOnly(True)
-            self.right_Number_LineEdit_2.setReadOnly(True)
+            # self.right_Number_LineEdit_1.setReadOnly(True)
+            # self.right_Number_LineEdit_2.setReadOnly(True)
+            self.SetReadOnly(self.right_Number_LineEdit_1, True)
+            self.SetReadOnly(self.right_Number_LineEdit_2, True)
             self.minusvalue1 = self.minusrightvalue
             self.minusvalue2 = cur[self.minusrightvalueindex][0]
             self.minusvalue3 = 0
@@ -752,8 +801,6 @@ class Random_Practice(object):
         self.right_top_label_1.setGeometry(QtCore.QRect(480, 140, 80, 120))
         self.right_top_label_2.setGeometry(QtCore.QRect(550, 140, 80, 120))
         self.right_bottom_label_1.setGeometry(QtCore.QRect(490, 720, 200, 140))
-        # self.right_Number_LineEdit_1.setStyleSheet("background-image:url(../images/number2.png")
-        # self.right_Number_LineEdit_1.setStyleSheet("background-image:url(:../images/number2.png);\n""background-attachment:fixed;\n""background-repeat:none;\n""background-position:center")
 
         self.right_top_time_label.setPixmap(QPixmap("../images/time.png"))
         self.right_top_time_label.setScaledContents(True)  # 让图片自适应label大小
@@ -789,7 +836,7 @@ class Random_Practice(object):
 
         self.right_button_2 = QtWidgets.QPushButton("退出", self.frame)
         self.right_button_2.clicked.connect(self.DeleteFram)
-        self.right_button_2.setGeometry(QtCore.QRect(1050, 0, 100, 50))
+        self.right_button_2.setGeometry(QtCore.QRect(1050, 40, 100, 50))
         self.right_button_2.setStyleSheet('''
             QPushButton{
                     background:#ff3c3c;
@@ -819,7 +866,7 @@ class Random_Practice(object):
         # border-image: url(:../ images / screen2.jpg);
         self.frame.setStyleSheet('''
             QWidget#Frame{
-                border-image:url(../images/screen2.jpg);
+                border-image:url(../images/screen7.jpg);
                 border-top:1px solid white;
                 border-bottom:1px solid white;
                 border-right:1px solid white;
@@ -1391,6 +1438,10 @@ class Random_Practice(object):
             Qmut.lock()
             if self.IsTrue():
                 print("结果正确")
+                self.right_Number_LineEdit_1.setReadOnly(True)
+                self.right_Number_LineEdit_2.setReadOnly(True)
+                self.right_Number_LineEdit_3.setReadOnly(True)
+                self.right_Number_LineEdit_4.setReadOnly(True)
                 self.right_Number_LineEdit_5.setText("恭喜你，回答正确")
                 self.right_Number_LineEdit_6.setText("")
                 print("self.ButtonFlag True self.IsTrue() True")
@@ -1656,4 +1707,11 @@ class Random_Practice(object):
         self.ChangeNumberTime(self.right_top_label_1, self.right_top_label_2, int(Rsec / 10), int(Rsec % 10))
         print("退出")
 
-
+    # 修改编辑框为透明
+    def SetReadOnly(self,right_Number_LineEdit,flag):
+        if flag:
+            right_Number_LineEdit.setReadOnly(True)
+            right_Number_LineEdit.setStyleSheet("color:white;font:30px;background:transparent;border-width:0;border-style:outset")
+        else:
+            right_Number_LineEdit.setReadOnly(False)
+            right_Number_LineEdit.setStyleSheet("color:white;font:30px;background:transparent;border-width:0;")

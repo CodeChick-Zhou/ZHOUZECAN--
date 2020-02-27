@@ -101,7 +101,72 @@ class NormalExamTimeWorkThread(QThread):
         self.SignalButton.emit()
         NExamMutx.unlock()
 
+class VDTimeVideoThread(QThread):
 
+    def __init__(self):
+        super().__init__()
+
+    # 手势识别定时器的结束标志
+    VideoStopFlag = False
+    SignalButton = QtCore.pyqtSignal()
+    workthread = QtCore.pyqtSignal()
+    timer = QtCore.pyqtSignal()   # 每隔1秒发送一次信号
+    # end = pyqtSignal()     # 计数完成后发送一次信号
+
+    def SetVideoSingleton(self,flag):
+        self.VideoStopFlag = flag
+
+    def EndTime(self):
+        print("********发送信号*********")
+        self.workthread.emit()
+
+        # print("********发送信号*********")
+
+    def run(self):
+        QmutVideo.lock()        # 加锁防止出现两个线程
+        print("VDTimeVideoThread start run")
+        global Nsec,Asec,QLineEditCount
+        self.count = QLineEditCount
+
+
+        while self.count:
+            print("VDTimeVideoThread QLineEditCount")
+            while True:
+                print("VDTimeVideoThread Nsec", Nsec)
+                if self.VideoStopFlag:
+                    print("VDTimeVideoThread self.SignalButton.emit()")
+                    self.SignalButton.emit()
+                    QmutVideo.unlock()
+                    return
+
+                self.sleep(1)  # 休眠1秒
+                print("VDTimeVideoThread sleep")
+
+
+                if self.VideoStopFlag:
+                    print("VDTimeVideoThread self.SignalButton.emit()")
+                    self.SignalButton.emit()
+                    QmutVideo.unlock()
+                    return
+
+                if Nsec == 0:
+                    print("VDTimeVideoThread end")
+                    self.EndTime()
+                    break
+
+                self.timer.emit()  # 发送timer信号
+                print(" self.timer.emit()")
+
+            # print("TimeVideoThread self.VideoStopFlag ", self.VideoStopFlag)
+            # print("TimeVideoThread 结束 ",Rsec)
+            # print("QLineEditCount ", QLineEditCount)
+            Nsec = Asec
+            self.count -= 1
+            print("self.count",self.count)
+
+        print("VDTimeVideoThread end")
+        VideoThreadEnd = True
+        QmutVideo.unlock()
 
 class TimeVideoThread(QThread):
 
@@ -127,41 +192,34 @@ class TimeVideoThread(QThread):
     def run(self):
         QmutVideo.lock()        # 加锁防止出现两个线程
         print("TimeVideoThread start run")
-        global Nsec,Asec,VideoThreadEnd,QLineEditCount
+        global Nsec,Asec,QLineEditCount
         self.count = QLineEditCount
-        VideoThreadEnd = False
-        self.timer.emit()  # 发送timer信号
+
         while self.count:
             print("TimeVideoThread QLineEditCount")
             while True:
                 print("TimeVideoThread Nsec", Nsec)
                 if self.VideoStopFlag:
-                    self.SignalButton.emit()
                     print("TimeVideoThread self.SignalButton.emit()")
+                    self.SignalButton.emit()
                     QmutVideo.unlock()
                     return
 
                 self.sleep(1)  # 休眠1秒
-                print("TimeVideoThread Nsec",Nsec)
+                print("TimeVideoThread sleep")
 
                 if self.VideoStopFlag:
-                    self.SignalButton.emit()
                     print("TimeVideoThread self.SignalButton.emit()")
+                    self.SignalButton.emit()
                     QmutVideo.unlock()
                     return
 
                 if Nsec == 0:
-                    self.EndTime()
                     print("TimeVideoThread end")
+                    self.EndTime()
                     break
-
-                self.timer.emit()   # 发送timer信号
-
-                if self.VideoStopFlag:
-                    self.SignalButton.emit()
-                    print("TimeVideoThread self.SignalButton.emit()")
-                    QmutVideo.unlock()
-                    return
+                self.timer.emit()  # 发送timer信号
+                print(" self.timer.emit()")
 
             # print("TimeVideoThread self.VideoStopFlag ", self.VideoStopFlag)
             # print("TimeVideoThread 结束 ",Rsec)
@@ -171,6 +229,32 @@ class TimeVideoThread(QThread):
 
         print("TimeVideoThread end")
         VideoThreadEnd = True
+        QmutVideo.unlock()
+
+class TimeVideoSleepThread(QThread):
+    timer = pyqtSignal()
+    end = pyqtSignal()
+    def run(self):
+        QmutVideo.lock()
+        global Nsec
+        self.sleeptime = Nsec
+        while True:
+
+            self.sleep(1)
+            print("self.sleeptime:",self.sleeptime)
+
+
+            if self.sleeptime == 0:
+                print("self.end.emit()")
+                self.end.emit()
+                break
+
+            self.timer.emit()
+
+            self.sleeptime -= 1
+
+
+        print("TimeVideoSleepThread end")
         QmutVideo.unlock()
 
 
@@ -403,7 +487,8 @@ class Examination(object):
                 self.right_Number_LineEdit_4.setReadOnly(True)
                 self.right_Number_LineEdit_5.setText("回答正确，答案如下")
                 self.right_Number_LineEdit_6.setText("")
-
+                self.right_bottom_label_1.setPixmap(QPixmap("../images/对号.png"))
+                self.right_bottom_label_1.setScaledContents(True)  # 让图片自适应label大小
                 VideoSingleton.SetShowFlag(False)
                 QmutVideo.unlock()
                 return
@@ -469,8 +554,49 @@ class Examination(object):
     def VideoButtonConnect(self):
         return
 
+    def VDend(self):
+
+        QmutVideo.lock()
+        QmutVideo.unlock()
+
+        global QLineEditCount,Nsec,Asec
+
+        print("self.QuestionIndex",self.QuestionIndex)
+        print("self.NumberQuestions",self.NumberQuestions)
+
+        if self.QuestionIndex == self.NumberQuestions-1:
+            print("VDend() self.QuestionIndex",self.QuestionIndex)
+
+            if hasattr(self, "SubmitDialog"):
+                if self.SubmitDialog.isActiveWindow():
+                    self.SubmitDialog.close()
+
+
+            print("self.SubmitDialog.close()")
+            self.GetScore()
+            return
+
+        self.QuestionIndex += 1
+        print("self.QuestionIndex",self.QuestionIndex)
+        print("self.NumberQuestions",self.NumberQuestions)
+        self.GetAnswer()
+        self.VDcount = len(self.GAnswer)
+        QLineEditCount = len(self.GAnswer)
+        Nsec = int(self.Timing/10)
+        Asec = int(self.Timing/10)
+        self.ChangeTime()
+
+        self.right_Number_LineEdit_5.setText("请根据题目，摆出相应的手势,使得公式相等")
+        self.right_Number_LineEdit_6.setText("请输入第一个框")
+
+        self.VdShowExam()
+
+        self.VDtimevideothread.start()
+        # QmutVideo.unlock()
+
     # 手势识别调用的函数
     def VDGetTimeVideoResult(self,result):
+        print("VDGetTimeVideoResult() start")
         self.NEQuestionCur[self.QuestionIndex][self.GAnswerIndex[0]] = result
         if self.GAnswerIndex[0] == 0:
             self.ChangeNumberImage(self.right_Number_LineEdit_1,result)
@@ -481,54 +607,89 @@ class Examination(object):
         elif self.GAnswerIndex[0] == 3:
             self.ChangeNumberImage(self.right_Number_LineEdit_4,result)
 
+        del self.GAnswerIndex[0]
+
         self.VDcount -= 1
 
+
         if self.VDcount == 0:
-            return
+            global Nsec
+            if self.QuestionIndex == self.NumberQuestions-1:
+                print("手势识别输入完毕，正在计算分数")
+                self.right_Number_LineEdit_5.setText("手势识别输入完毕，正在计算分数")
+                self.right_Number_LineEdit_6.setText("")
+                Nsec = 3 # 3秒之后进入下一题
+                self.ChangeTime()
+                self.right_button_2.setEnabled(False)
+                self.timevideosleepthread.start()
+            else:
+                self.IsTrue()
+                self.right_Number_LineEdit_5.setText("手势识别输入完毕，即将进入下一题")
+                print("手势识别输入完毕，即将进入下一题")
+                self.right_Number_LineEdit_6.setText("")
+                Nsec = 3 # 3秒之后进入下一题
+                self.ChangeTime()
+                print("self.ChangeTime()")
+                self.timevideosleepthread.start()
         else:
-            return
+            self.right_Number_LineEdit_5.setText("请根据题目，摆出相应的手势,使得公式相等")
+            self.right_Number_LineEdit_6.setText("请输入第二个框")
 
         return
 
     # 手势识别模式
-    FirstVDExam = False
+    FirstVDExam = True
+    FirstErrorVideo = True
     def VideoExam(self):
+        self.VDstart = True
+        self.NDstart = False
+
         self.frame.setVisible(False)
         self.frame2.setVisible(False)
         self.frame1.setVisible(True)
 
 
-        self.right_button_1.setHidden(False)
+        self.right_button_1.setHidden(True)
         self.right_button_2.setHidden(False)
-        self.right_button_3.setHidden(False)
-        self.right_button_4.setHidden(False)
-        self.right_button_5.setHidden(False)
+        self.right_button_3.setHidden(True)
+        self.right_button_4.setHidden(True)
+        self.right_button_5.setHidden(True)
 
-        global NExamStopFlag,Nsec,QLineEditCount
+        self.right_button_2.setEnabled(True)
+
+        global NExamStopFlag,Nsec,QLineEditCount,Asec
         NExamStopFlag = False
         print("self.Timing:",self.Timing)
         Nsec = int(self.Timing/10)
-        ASec = int(self.Timing/10)
+        Asec = int(self.Timing/10)
         self.ChangeTime()
 
         # 非观察模式
         self.ViewFlag = False
+        print("self.ViewFlag:",self.ViewFlag)
+
+        if self.FirstErrorVideo:
+            self.timevideothread = TimeVideoThread()
+            self.timevideothread.timer.connect(self.countTime)
+            self.timevideothread.workthread.connect(VideoSingleton.work)
+            self.timevideothread.SignalButton.connect(self.VideoButtonConnect)
+
+            self.FirstErrorVideo = False
 
         if self.FirstVDExam:
-            # self.VDtimeworkthread = NormalExamTimeWorkThread()
-            # self.VDtimeworkthread.timer.connect(self.countTime)
-            # self.VDtimeworkthread.end.connect(self.GetScore)
-            # self.VDtimeworkthread.SignalButton.connect(self.VideoButtonConnect)
 
-            self.VDtimevideothread = TimeVideoThread()
+            self.timevideosleepthread = TimeVideoSleepThread()
+            self.timevideosleepthread.timer.connect(self.countTime)
+            self.timevideosleepthread.end.connect(self.VDend)
+
+            self.VDtimevideothread = VDTimeVideoThread()
             self.VDtimevideothread.timer.connect(self.countTime)
             self.VDtimevideothread.workthread.connect(VideoSingleton.work)
             self.VDtimevideothread.SignalButton.connect(self.VideoButtonConnect)
 
             self.FirstVDExam = False
 
-        self.timevideothread.SetVideoSingleton(False)
-
+        self.VDtimevideothread.SetVideoSingleton(False)
         # 设置手势识别触发函数
         VideoSingleton.timer.connect(self.VDGetTimeVideoResult)
 
@@ -547,22 +708,32 @@ class Examination(object):
         self.VDcount = len(self.GAnswer)
 
 
-        QLineEditCount = 0
+        QLineEditCount = len(self.GAnswer)
 
-        for i in range(0, len(self.NEStatus[self.QuestionIndex])):
-            if self.NEStatus[self.QuestionIndex][i]:
-                QLineEditCount += 1
+        print("self.VDcount",self.VDcount,"QLineEditCount",QLineEditCount)
+
+        # for i in range(0, len(self.NEStatus[self.QuestionIndex])):
+        #     if self.NEStatus[self.QuestionIndex][i]:
+        #         QLineEditCount += 1
 
 
+        self.right_Number_LineEdit_5.setText("请根据题目，摆出相应的手势,使得公式相等")
+        self.right_Number_LineEdit_6.setText("请输入第一个框")
+
+        VideoSingleton.SetShowFlag(True)
         self.VDtimevideothread.start()
+        print("self.VDtimevideothread.start()")
 
-
-
-        return
 
     # 开始正常开始
     FirstNExam = True
+    # 标志是手势识别还是正常模式
+    NDstart = False
+    VDstart = False
     def NormalExam(self):
+        self.VDstart = False
+        self.NDstart = True
+
         self.frame.setVisible(False)
         self.frame2.setVisible(False)
         self.frame1.setVisible(True)
@@ -588,16 +759,19 @@ class Examination(object):
         # 非观察模式
         self.ViewFlag = False
 
+        if self.FirstErrorVideo:
+            self.timevideothread = TimeVideoThread()
+            self.timevideothread.timer.connect(self.countTime)
+            self.timevideothread.workthread.connect(VideoSingleton.work)
+            self.timevideothread.SignalButton.connect(self.VideoButtonConnect)
+
+            self.FirstErrorVideo = False
+
         if self.FirstNExam:
             self.NEtimeworkthread = NormalExamTimeWorkThread()
             self.NEtimeworkthread.timer.connect(self.countTime)
             self.NEtimeworkthread.end.connect(self.GetScore)
             self.NEtimeworkthread.SignalButton.connect(self.VideoButtonConnect)
-
-            self.timevideothread = TimeVideoThread()
-            self.timevideothread.timer.connect(self.countTime)
-            self.timevideothread.workthread.connect(VideoSingleton.work)
-            self.timevideothread.SignalButton.connect(self.VideoButtonConnect)
 
 
             self.FirstNExam = False
@@ -673,15 +847,17 @@ class Examination(object):
         self.right_top_label_2 = QLabel(self.frame1)
         self.right_top_label_3 = QLabel(self.frame1)
         self.right_bottom_label_1 = QLabel(self.frame1)
+        self.right_bottom_LineEdit = QLabel(self.frame1)
 
 
         self.right_top_time_label.setGeometry(QtCore.QRect(500, 0, 130, 140))
         self.right_top_label_1.setGeometry(QtCore.QRect(440, 140, 80, 120))
         self.right_top_label_2.setGeometry(QtCore.QRect(510, 140, 80, 120))
         self.right_top_label_3.setGeometry(QtCore.QRect(585, 140, 80, 120))
-        self.right_bottom_label_1.setGeometry(QtCore.QRect(490, 720, 200, 140))
-        # self.right_Number_LineEdit_1.setStyleSheet("background-image:url(../images/number2.png")
-        # self.right_Number_LineEdit_1.setStyleSheet("background-image:url(:../images/number2.png);\n""background-attachment:fixed;\n""background-repeat:none;\n""background-position:center")
+        self.right_bottom_label_1.setGeometry(QtCore.QRect(490, 650, 200, 140))
+        self.right_bottom_LineEdit.setGeometry(QtCore.QRect(530,820, 200,60))
+        self.right_bottom_LineEdit.setStyleSheet("color:white;font:32px;background:transparent;border-width:0;border-style:outset")
+
 
         self.right_top_time_label.setPixmap(QPixmap("../images/time.png"))
         self.right_top_time_label.setScaledContents(True)  # 让图片自适应label大小
@@ -782,7 +958,7 @@ class Examination(object):
 
         self.frame1.setStyleSheet('''
             QWidget#Frame1{
-                border-image:url(../images/screen2.jpg);
+                border-image:url(../images/screen7.jpg);
                 border-top:1px solid white;
                 border-bottom:1px solid white;
                 border-right:1px solid white;
@@ -898,10 +1074,13 @@ class Examination(object):
         self.frame2_QlineEdit2.setGeometry(QtCore.QRect(250, 380, 650, 40))
         self.frame2_QlineEdit2.setAlignment(Qt.AlignCenter)
         self.frame2_QlineEdit2.setStyleSheet("color:white;font:32px;background:transparent;border-width:0;border-style:outset")
+        self.frame2_QlineEdit1.setReadOnly(True)
+        self.frame2_QlineEdit2.setReadOnly(True)
 
-
-        self.frame2_button1.setGeometry(QtCore.QRect(300, 630, 280, 50))
-        self.frame2_button2.setGeometry(QtCore.QRect(600, 630, 280, 50))
+        self.frame2_button1.setGeometry(QtCore.QRect(190, 580, 320, 60))
+        self.frame2_button2.setGeometry(QtCore.QRect(650, 585, 320, 60))
+        self.frame2_button1.setStyleSheet("font:25px;")
+        self.frame2_button2.setStyleSheet("font:25px;")
         self.frame2_button1.clicked.connect(self.ViewQuestion)
         self.frame2_button2.clicked.connect(self.BackMain)
 
@@ -922,7 +1101,7 @@ class Examination(object):
             }
             
             QWidget#Frame2{
-                border-image:url(../images/screen2.jpg);
+                border-image:url(../images/screen7.jpg);
                 border-top:1px solid white;
                 border-bottom:1px solid white;
                 border-right:1px solid white;
@@ -938,6 +1117,9 @@ class Examination(object):
 
     ViewFlag = False
     def ViewQuestion(self):
+        VideoSingleton.timer.disconnect()
+        VideoSingleton.timer.connect(self.GetTimeVideoResult)
+
         self.frame.setVisible(False)
         self.frame2.setVisible(False)
         self.frame1.setVisible(True)
@@ -961,10 +1143,13 @@ class Examination(object):
 
     # 返回主菜单
     def BackMain(self):
-        VideoSingleton.timer.disconnect(self.GetTimeVideoResult)
+        VideoSingleton.timer.disconnect()
         self.frame2.setVisible(False)
         self.frame1.setVisible(False)
         self.frame.setVisible(True)
+
+        self.right_button_5.setHidden(True)
+        self.right_button_2.setHidden(False)
 
 
     def ChangeTime(self):
@@ -990,7 +1175,7 @@ class Examination(object):
     # Easy-180  Medium-120   difficult-180
     Timing = 180
     # Number of questions
-    NumberQuestions = 10
+    NumberQuestions = 2
     def SetDifficulty(self,result):
         global Nsec,Asec
         self.Difficulty = result
@@ -1009,69 +1194,92 @@ class Examination(object):
 
         # print("SetDifficulty() Nsec",Nsec)
 
-    # 获得分数
-    def GetScore(self):
-        global NExamStopFlag
-        NExamStopFlag = True
 
-        NExamMutx.lock()
-
+    def GetScoreVDNE(self):
         # 判断最后一个题目的正确性
-        if self.QuestionIndex == self.NumberQuestions-1:
+        if self.QuestionIndex == self.NumberQuestions - 1:
             self.IsTrue()
 
         # 正确的题目数
         self.correct = 0
 
-        for i in range(0,len(self.NEAnswerCur)):
+        for i in range(0, len(self.NEAnswerCur)):
             if self.NEAnswerCur[i] == 1:
                 self.correct += 1
 
         # 分数
-        self.score = int(100*self.correct/self.NumberQuestions)
+        print("self.NEAnswerCur",self.NEAnswerCur)
+        self.score = int(100 * self.correct / self.NumberQuestions)
 
-        print("correct",self.correct, "score",self.score)
+        print("correct", self.correct, "score", self.score)
 
-        self.tip1 = "本次一共有"+ str(self.NumberQuestions)+"题，回答正确为"+str(self.correct)+"道"
+        self.tip1 = "本次一共有" + str(self.NumberQuestions) + "题，回答正确为" + str(self.correct) + "道"
         self.frame2_QlineEdit1.setText(self.tip1)
-        self.tip2 = "你的得分为:"+str(self.score)+"分"
+        self.tip2 = "你的得分为:" + str(self.score) + "分"
         self.frame2_QlineEdit2.setText(self.tip2)
 
+
+    #
+    # def SubGetScore(self):
+    #     self.GetScore()
+
+
+    # 获得分数
+    def GetScore(self):
         self.frame.setVisible(False)
         self.frame1.setVisible(False)
         self.frame2.setVisible(True)
 
-        NExamMutx.unlock()
-        return
+        VideoSingleton.SetShowFlag(False)
+
+
+        if self.VDstart:
+            self.VDtimevideothread.SetVideoSingleton(True)
+            self.right_button_2.setHidden(True)
+            QmutVideo.lock()
+            self.GetScoreVDNE()
+            QmutVideo.unlock()
+
+        else:
+            global NExamStopFlag
+            NExamStopFlag = True
+            NExamMutx.lock()
+            self.GetScoreVDNE()
+            NExamMutx.unlock()
+
 
     # 提交试卷
     def SubmitExam(self):
-        self.IsTrue()
-        for i in range(0,len(self.NEQuestionCur)-1):
-            if self.NEAnswerCur[i] == 2:
-                # 弹窗
-                print("之前的题目没做完")
-                self.tip = "还有题目没做完，是否要提交试卷"
-                self.ShowSubmitDialog()
-                return
-
-        if self.QuestionIndex == self.NumberQuestions-1:
-            for i in range(0,len(self.NEQuestionCur[self.QuestionIndex])):
-                if self.NEQuestionCur[self.QuestionIndex][i] == -1:
-                    print("当前题目没做完")
+        if self.NDstart:
+            self.IsTrue()
+            for i in range(0,len(self.NEQuestionCur)-1):
+                if self.NEAnswerCur[i] == 2:
+                    # 弹窗
+                    print("之前的题目没做完")
                     self.tip = "还有题目没做完，是否要提交试卷"
                     self.ShowSubmitDialog()
                     return
 
-        # 弹窗,确定提交
-        print("题目全部做完")
-        self.tip = "是否确定要提交试卷"
-        self.ShowSubmitDialog()
+            if self.QuestionIndex == self.NumberQuestions-1:
+                for i in range(0,len(self.NEQuestionCur[self.QuestionIndex])):
+                    if self.NEQuestionCur[self.QuestionIndex][i] == -1:
+                        print("当前题目没做完")
+                        self.tip = "还有题目没做完，是否要提交试卷"
+                        self.ShowSubmitDialog()
+                        return
+
+            # 弹窗,确定提交
+            print("题目全部做完")
+            self.tip = "是否确定要提交试卷"
+            self.ShowSubmitDialog()
+
+        elif self.VDstart:
+            self.tip = "还有题目没做完，是否要提交试卷"
+            self.ShowSubmitDialog()
 
     # 计数器
     def countTime(self):
         global Nsec
-        print()
 
         Nsec -= 1
         if Nsec < 0:
@@ -1091,6 +1299,8 @@ class Examination(object):
             c = int(int(Nsec%100)%10)
             # print("a,b,c",a,b,c)
             self.ChangeNumberTime(a,b,c)
+
+        print("countTime")
 
     # 获得考试题目
     # 答案
@@ -1222,7 +1432,7 @@ class Examination(object):
         self.SetReadOnly(self.right_Number_LineEdit_4, True)
 
         for i in range(0, len(self.NEStatus[self.QuestionIndex])):
-            print("i : ", i)
+            print("VdShowExam i : ", i)
             if self.NEStatus[self.QuestionIndex][i] == True:
                 if i == 0:
                     self.SetReadOnly(self.right_Number_LineEdit_1, False)
@@ -1268,6 +1478,11 @@ class Examination(object):
         self.ChangeNumberImage(self.right_Number_LineEdit_3, thirdvalue)
         self.ChangeNumberImage(self.right_Number_LineEdit_4, fourthvalue)
 
+        curstr = "第"+str(self.QuestionIndex+1)+"题"
+        self.right_bottom_LineEdit.setText(curstr)
+        print("VdShowExam() curstr",curstr)
+
+
     # 开始显示
     def ShowExam(self):
         # 判断是否为第一题，第一题没有上一题
@@ -1281,6 +1496,10 @@ class Examination(object):
             self.right_button_1.setHidden(True)
         else:
             self.right_button_1.setHidden(False)
+
+        curstr = "第" + str(self.QuestionIndex + 1) + "题"
+        self.right_bottom_LineEdit.setText(curstr)
+
 
         if self.ViewFlag:
             self.ViewQLineEdit()
@@ -1297,6 +1516,7 @@ class Examination(object):
 
         # flag
         self.Aflag = False
+        print("self.NEQuestionCur[self.QuestionIndex]",self.NEQuestionCur[self.QuestionIndex])
         for i in range(0,len(self.NEQuestionCur[self.QuestionIndex])):
             if self.NEQuestionCur[self.QuestionIndex][i] == -1:
                 self.Aflag = True
@@ -1316,7 +1536,7 @@ class Examination(object):
                     return False
 
             else:
-                if firstvalue + secondvalue == thirdvalue*10 + fourthvalue :
+                if firstvalue + secondvalue == thirdvalue*10 + fourthvalue:
                     self.NEAnswerCur[self.QuestionIndex] = 1
                     return True
                 else:
@@ -1441,6 +1661,18 @@ class Examination(object):
             self.right_Number_LineEdit_4.setReadOnly(True)
 
         else:
+            for i in range(0, len(self.NEStatus[self.QuestionIndex])):
+                print("i : ", i)
+                if self.NEStatus[self.QuestionIndex][i] == True:
+                    if i == 0:
+                        self.right_Number_LineEdit_1.setReadOnly(True)
+                    if i == 1:
+                        self.right_Number_LineEdit_2.setReadOnly(True)
+                    if i == 2:
+                        self.right_Number_LineEdit_3.setReadOnly(True)
+                    if i == 3:
+                        self.right_Number_LineEdit_4.setReadOnly(True)
+
             cur = self.QuestionIndex
             if self.NEQuestion[self.QuestionIndex][3] == -2:
                 value = self.NEQuestion[self.QuestionIndex][2]

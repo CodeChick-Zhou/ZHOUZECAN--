@@ -1,3 +1,4 @@
+
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -5,8 +6,8 @@ from PyQt5.QtGui import *
 import sys
 import qtawesome
 import time
-from NN_multiplication_table import NN_Table
 from Random_practice import Random_Practice
+from NN_multiplication_table import NN_Table
 from Examination import Examination
 from VideoWorkThread import VideoSingleton
 
@@ -132,7 +133,7 @@ class Main_ui(QWidget):
 
 
         self.verticalLayoutWidget = QtWidgets.QWidget(self.frame)
-        self.verticalLayoutWidget.setGeometry(QtCore.QRect(450, 100, 300, 780))
+        self.verticalLayoutWidget.setGeometry(QtCore.QRect(450, 200, 300, 680))
         self.verticalLayoutWidget.setObjectName("ButtonWidget")
         self.verticalLayout = QtWidgets.QVBoxLayout(self.verticalLayoutWidget)
 
@@ -159,21 +160,15 @@ class Main_ui(QWidget):
         self.pushButton_3.setFixedSize(300, 40)
         self.verticalLayout.addWidget(self.pushButton_3)
 
-        self.pushButton_4 = QtWidgets.QPushButton(qtawesome.icon('fa.comment', color='white'),"反馈建议",self.verticalLayoutWidget)
+        self.pushButton_4 = QtWidgets.QPushButton(qtawesome.icon('fa.star', color='white'),"联系我们",self.verticalLayoutWidget)
         self.pushButton_4.setObjectName("HomeButton")
         self.pushButton_4.setFixedSize(300, 40)
         self.verticalLayout.addWidget(self.pushButton_4)
 
-
-        self.pushButton_5 = QtWidgets.QPushButton(qtawesome.icon('fa.star', color='white'),"联系我们",self.verticalLayoutWidget)
+        self.pushButton_5 = QtWidgets.QPushButton(qtawesome.icon('fa.question', color='white'),"遇到问题",self.verticalLayoutWidget)
         self.pushButton_5.setObjectName("HomeButton")
         self.pushButton_5.setFixedSize(300, 40)
         self.verticalLayout.addWidget(self.pushButton_5)
-
-        self.pushButton_6 = QtWidgets.QPushButton(qtawesome.icon('fa.question', color='white'),"遇到问题",self.verticalLayoutWidget)
-        self.pushButton_6.setObjectName("HomeButton")
-        self.pushButton_6.setFixedSize(300, 40)
-        self.verticalLayout.addWidget(self.pushButton_6)
 
         self.frame.setStyleSheet('''
         QWidget#Fram{
@@ -301,19 +296,21 @@ def HomePage(window,main_window):
     main_window.show()
 
 if __name__ == "__main__":
+    print("start")
     app = QApplication(sys.argv)
+    print("init QApplication,ui")
     window = Main_ui()
     AbWindow = AbnormityWindow()
-    # AbWindow.show()
-    window.show()
+    AbWindow.show()
+    # window.show()
 
     # 开始摄像头
     VideoSingleton.start()
     VideoSingleton.SetShowFlag(False)
 
-    # workthread = HomeWorkThread()
-    # workthread.timer.connect(lambda:HomePage(AbWindow,window))
-    # workthread.start()
+    workthread = HomeWorkThread()
+    workthread.timer.connect(lambda:HomePage(AbWindow,window))
+    workthread.start()
 
-
+    print("end while")
     sys.exit(app.exec_())
