@@ -277,6 +277,9 @@ def is_number(s):
 class Examination(object):
     def __init__(self,parents):
         super().__init__()
+        # 为了获得坐标，传入父对象
+        self.curparents = parents
+
         self.frame = QWidget(parents)
         self.frame.setObjectName("Frame")
         self.frame.resize(1200, 900)
@@ -301,7 +304,7 @@ class Examination(object):
         self.frame1.setVisible(False)
         self.frame2.setVisible(False)
 
-
+    # 显示对话框
     def ShowSubmitDialog(self):
         self.SubmitDialog = QDialog()
 
@@ -340,6 +343,11 @@ class Examination(object):
         self.Submitbutton2.move(200, 50)
 
         self.SubmitDialog.setObjectName("ExDialog")
+
+        size1 = self.frame.geometry()
+        size2 = self.SubmitDialog.geometry()
+        self.SubmitDialog.move( self.curparents.x()+(size1.width()-size2.width())/2,
+                            self.curparents.y()+(size1.height()-size2.height())/2)
 
 
         self.SubmitDialog.setStyleSheet('''
@@ -407,6 +415,11 @@ class Examination(object):
 
         self.Exdialog.setWindowOpacity(1)  # 设置窗口透明度
         self.Exdialog.setAttribute(QtCore.Qt.WA_TranslucentBackground)  # 设置窗口背景透明
+        # screen = QDesktopWidget().screenGeometry()
+        size1 = self.frame.geometry()
+        size2 = self.Exdialog.geometry()
+        self.Exdialog.move( self.curparents.x()+(size1.width()-size2.width())/2,
+                            self.curparents.y()+(size1.height()-size2.height())/2)
 
         self.button1.setFixedSize(100,50)
         self.button2.setFixedSize(100,50)
@@ -454,7 +467,7 @@ class Examination(object):
 
         self.Exdialog.exec()
 
-    # 获得手势识别的值
+    # 获得手势识别的值，用于修改答案
     def GetTimeVideoResult(self,result):
 
         self.NEQuestionCur[self.QuestionIndex][self.GAnswerIndex[0]] = result
@@ -471,6 +484,7 @@ class Examination(object):
         del self.GAnswer[0]
         length = len(self.GAnswer)
 
+        self.show_Arrow()
         if length==1:
             self.right_Number_LineEdit_6.setText("请对着摄像头的框框摆出第二个酷酷的手势"+str(self.GAnswer[0]))
             # del self.GAnswer[0]
@@ -489,11 +503,12 @@ class Examination(object):
                 self.right_Number_LineEdit_6.setText("")
                 self.right_bottom_label_1.setPixmap(QPixmap("../images/对号.png"))
                 self.right_bottom_label_1.setScaledContents(True)  # 让图片自适应label大小
+
+
                 VideoSingleton.SetShowFlag(False)
                 QmutVideo.unlock()
                 return
             else:
-
                 QmutVideo.lock()
                 global QLineEditCount,VideoTime
                 if VideoTime == 1:
@@ -503,6 +518,10 @@ class Examination(object):
                     self.right_bottom_label_1.setScaledContents(True)  # 让图片自适应label大小
 
                     self.GetAnswer()
+                    self.Arrow_indication(0, False)
+                    self.Arrow_indication(1, False)
+                    self.Arrow_indication(2, False)
+                    self.Arrow_indication(3, False)
 
                     for i in range(0,len(self.GAnswerIndex)):
                         if self.GAnswerIndex[i] == 0:
@@ -518,6 +537,7 @@ class Examination(object):
                             self.ChangeNumberImage(self.right_Number_LineEdit_4, self.GAnswer[i])
                             self.NEQuestionCur[self.QuestionIndex][3] = self.GAnswer[i]
 
+                    # 重新初始化次数
                     VideoTime = 2
 
                     self.right_button_1.setEnabled(True)
@@ -538,6 +558,7 @@ class Examination(object):
                         QLineEditCount += 1
 
                 self.GetAnswer()
+                self.show_Arrow()
 
                 self.right_Number_LineEdit_5.setText("手势识别输入错误，请检查自己的手势，再次摆出手势")
                 self.right_Number_LineEdit_6.setText("请对着摄像头的框框摆出酷酷的手势" + str(self.GAnswer[0]))
@@ -589,8 +610,11 @@ class Examination(object):
         self.right_Number_LineEdit_5.setText("请根据题目，摆出相应的手势,使得公式相等")
         self.right_Number_LineEdit_6.setText("请输入第一个框")
 
+        # 显示题目
         self.VdShowExam()
 
+        # 显示箭头
+        self.show_Arrow()
         self.VDtimevideothread.start()
         # QmutVideo.unlock()
 
@@ -611,7 +635,7 @@ class Examination(object):
 
         self.VDcount -= 1
 
-
+        self.show_Arrow()
         if self.VDcount == 0:
             global Nsec
             if self.QuestionIndex == self.NumberQuestions-1:
@@ -623,6 +647,7 @@ class Examination(object):
                 self.right_button_2.setEnabled(False)
                 self.timevideosleepthread.start()
             else:
+                self.IsTrue()
                 self.right_Number_LineEdit_5.setText("手势识别输入完毕，即将进入下一题")
                 print("手势识别输入完毕，即将进入下一题")
                 self.right_Number_LineEdit_6.setText("")
@@ -720,9 +745,12 @@ class Examination(object):
         self.right_Number_LineEdit_6.setText("请输入第一个框")
 
         VideoSingleton.SetShowFlag(True)
+
+        # 显示箭头
+        self.show_Arrow()
+
         self.VDtimevideothread.start()
         print("self.VDtimevideothread.start()")
-
 
     # 开始正常开始
     FirstNExam = True
@@ -826,6 +854,30 @@ class Examination(object):
         self.SetReadOnly(self.right_Number_LineEdit_5,True)
         self.SetReadOnly(self.right_Number_LineEdit_6,True)
 
+        self.right_LineEdit_label_1 = QLabel(self.frame1)
+        self.right_LineEdit_label_2 = QLabel(self.frame1)
+        self.right_LineEdit_label_3 = QLabel(self.frame1)
+        self.right_LineEdit_label_4 = QLabel(self.frame1)
+        self.right_LineEdit_label_1.setGeometry(QtCore.QRect(125, 600, 100, 100))
+        self.right_LineEdit_label_2.setGeometry(QtCore.QRect(425, 600, 100, 100))
+        self.right_LineEdit_label_3.setGeometry(QtCore.QRect(725, 600, 100, 100))
+        self.right_LineEdit_label_4.setGeometry(QtCore.QRect(865, 600, 100, 100))
+
+        # self.right_LineEdit_label_1.setPixmap(QPixmap("../images/箭头2.png"))
+        # self.right_LineEdit_label_1.setScaledContents(True)  # 让图片自适应label大小
+        # self.right_LineEdit_label_1.setPixmap(QPixmap("../images/箭头2.png"))
+        # self.right_LineEdit_label_1.setScaledContents(True)  # 让图片自适应label大小
+        # self.right_LineEdit_label_2.setPixmap(QPixmap("../images/箭头2.png"))
+        # self.right_LineEdit_label_2.setScaledContents(True)  # 让图片自适应label大小
+        # self.right_LineEdit_label_3.setPixmap(QPixmap("../images/箭头2.png"))
+        # self.right_LineEdit_label_3.setScaledContents(True)  # 让图片自适应label大小
+        # self.right_LineEdit_label_4.setPixmap(QPixmap("../images/箭头2.png"))
+        # self.right_LineEdit_label_4.setScaledContents(True)  # 让图片自适应label大小
+        # self.right_LineEdit_label_4.setPixmap(QPixmap(""))
+        # self.right_LineEdit_label_4.setScaledContents(True)  # 让图片自适应label大小
+
+
+
         # self.right_Number_LineEdit_6.setText("请填写下列空格，使得等式成立")
 
         # self.right_Number_LineEdit_1.setAttribute(QtCore.Qt.WA_MacShowFocusRect,0)
@@ -853,12 +905,12 @@ class Examination(object):
         self.right_top_label_1.setGeometry(QtCore.QRect(440, 140, 80, 120))
         self.right_top_label_2.setGeometry(QtCore.QRect(510, 140, 80, 120))
         self.right_top_label_3.setGeometry(QtCore.QRect(585, 140, 80, 120))
-        self.right_bottom_label_1.setGeometry(QtCore.QRect(490, 650, 200, 140))
-        self.right_bottom_LineEdit.setGeometry(QtCore.QRect(530,820, 200,60))
-        self.right_bottom_LineEdit.setStyleSheet("color:white;font:32px;background:transparent;border-width:0;border-style:outset")
+        self.right_bottom_label_1.setGeometry(QtCore.QRect(490, 700, 168, 122))
 
-        # self.right_Number_LineEdit_1.setStyleSheet("background-image:url(../images/number2.png")
-        # self.right_Number_LineEdit_1.setStyleSheet("background-image:url(:../images/number2.png);\n""background-attachment:fixed;\n""background-repeat:none;\n""background-position:center")
+        # 显示第几题
+        self.right_bottom_LineEdit.setGeometry(QtCore.QRect(530,830, 200,60))
+        self.right_bottom_LineEdit.setStyleSheet("color:black;font:32px;background:transparent;border-width:0;border-style:outset")
+
 
         self.right_top_time_label.setPixmap(QPixmap("../images/time.png"))
         self.right_top_time_label.setScaledContents(True)  # 让图片自适应label大小
@@ -959,7 +1011,7 @@ class Examination(object):
 
         self.frame1.setStyleSheet('''
             QWidget#Frame1{
-                border-image:url(../images/screen3.jpg);
+                border-image:url(../images/screen7.jpg);
                 border-top:1px solid white;
                 border-bottom:1px solid white;
                 border-right:1px solid white;
@@ -1078,10 +1130,10 @@ class Examination(object):
         self.frame2_QlineEdit1.setReadOnly(True)
         self.frame2_QlineEdit2.setReadOnly(True)
 
-        self.frame2_button1.setGeometry(QtCore.QRect(290, 630, 320, 60))
-        self.frame2_button2.setGeometry(QtCore.QRect(610, 630, 320, 60))
-        self.frame2_button1.setStyleSheet("font:30px;")
-        self.frame2_button2.setStyleSheet("font:30px;")
+        self.frame2_button1.setGeometry(QtCore.QRect(190, 580, 320, 60))
+        self.frame2_button2.setGeometry(QtCore.QRect(650, 585, 320, 60))
+        self.frame2_button1.setStyleSheet("font:25px;")
+        self.frame2_button2.setStyleSheet("font:25px;")
         self.frame2_button1.clicked.connect(self.ViewQuestion)
         self.frame2_button2.clicked.connect(self.BackMain)
 
@@ -1102,7 +1154,7 @@ class Examination(object):
             }
             
             QWidget#Frame2{
-                border-image:url(../images/screen3.jpg);
+                border-image:url(../images/screen7.jpg);
                 border-top:1px solid white;
                 border-bottom:1px solid white;
                 border-right:1px solid white;
@@ -1148,6 +1200,8 @@ class Examination(object):
         self.frame2.setVisible(False)
         self.frame1.setVisible(False)
         self.frame.setVisible(True)
+
+
 
         self.right_button_5.setHidden(True)
         self.right_button_2.setHidden(False)
@@ -1209,6 +1263,7 @@ class Examination(object):
                 self.correct += 1
 
         # 分数
+        print("self.NEAnswerCur",self.NEAnswerCur)
         self.score = int(100 * self.correct / self.NumberQuestions)
 
         print("correct", self.correct, "score", self.score)
@@ -1226,6 +1281,11 @@ class Examination(object):
 
     # 获得分数
     def GetScore(self):
+        # 消除箭头
+        self.GAnswerIndex.clear()
+        self.GAnswer.clear()
+        self.show_Arrow()
+
         self.frame.setVisible(False)
         self.frame1.setVisible(False)
         self.frame2.setVisible(True)
@@ -1233,13 +1293,14 @@ class Examination(object):
         VideoSingleton.SetShowFlag(False)
 
 
+        # 手势识别模式
         if self.VDstart:
             self.VDtimevideothread.SetVideoSingleton(True)
             self.right_button_2.setHidden(True)
             QmutVideo.lock()
             self.GetScoreVDNE()
             QmutVideo.unlock()
-
+        # 正常模式
         else:
             global NExamStopFlag
             NExamStopFlag = True
@@ -1516,6 +1577,7 @@ class Examination(object):
 
         # flag
         self.Aflag = False
+        print("self.NEQuestionCur[self.QuestionIndex]",self.NEQuestionCur[self.QuestionIndex])
         for i in range(0,len(self.NEQuestionCur[self.QuestionIndex])):
             if self.NEQuestionCur[self.QuestionIndex][i] == -1:
                 self.Aflag = True
@@ -1535,7 +1597,7 @@ class Examination(object):
                     return False
 
             else:
-                if firstvalue + secondvalue == thirdvalue*10 + fourthvalue :
+                if firstvalue + secondvalue == thirdvalue*10 + fourthvalue:
                     self.NEAnswerCur[self.QuestionIndex] = 1
                     return True
                 else:
@@ -1714,6 +1776,8 @@ class Examination(object):
 
             VideoTime = 2
 
+            self.show_Arrow()
+
             self.timevideothread.start()
             return
 
@@ -1823,3 +1887,40 @@ class Examination(object):
         else:
             self.right_top_label_3.setPixmap(QPixmap("../images/空.png"))
             self.right_top_label_3.setScaledContents(True)  # 让图片自适应label大小
+
+
+    # 显示箭头
+    def show_Arrow(self):
+        # for i in range(0,len(self.GAnswerIndex)):
+        self.Arrow_indication(0, False)
+        self.Arrow_indication(1, False)
+        self.Arrow_indication(2, False)
+        self.Arrow_indication(3, False)
+
+        if len(self.GAnswerIndex) >= 1:
+            self.Arrow_indication(self.GAnswerIndex[0],True)
+
+    # 箭头指示
+    def Arrow_indication(self,index,flag):
+        if flag:
+            if index == 0:
+                self.right_LineEdit_label_1.setPixmap(QPixmap("../images/箭头2.png"))
+                self.right_LineEdit_label_1.setScaledContents(True)  # 让图片自适应label大小
+            elif index == 1:
+                self.right_LineEdit_label_2.setPixmap(QPixmap("../images/箭头2.png"))
+                self.right_LineEdit_label_2.setScaledContents(True)  # 让图片自适应label大小
+            elif index == 2:
+                self.right_LineEdit_label_3.setPixmap(QPixmap("../images/箭头2.png"))
+                self.right_LineEdit_label_3.setScaledContents(True)  # 让图片自适应label大小
+            elif index == 3:
+                self.right_LineEdit_label_4.setPixmap(QPixmap("../images/箭头2.png"))
+                self.right_LineEdit_label_4.setScaledContents(True)  # 让图片自适应label大小
+        else:
+            if index == 0:
+                self.right_LineEdit_label_1.setPixmap(QPixmap(""))
+            if index == 1:
+                self.right_LineEdit_label_2.setPixmap(QPixmap(""))
+            if index == 2:
+                self.right_LineEdit_label_3.setPixmap(QPixmap(""))
+            if index == 3:
+                self.right_LineEdit_label_4.setPixmap(QPixmap(""))

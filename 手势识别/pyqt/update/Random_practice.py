@@ -1,3 +1,4 @@
+
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -11,8 +12,6 @@ import sys
 import qtawesome
 from VideoWorkThread import VideoSingleton
 
-# 手势识别的模块的文件地址
-Model_Path = "../src/model/model_2019_11_20_best.hdf5"
 
 NumberDict = {'1': "../images/number1.png", '2': "../images/number2.png", '3': "../images/number3.png",
               '4': "../images/number4.png", '5': "../images/number5.png", '6': "../images/number6.png",
@@ -647,6 +646,12 @@ class Random_Practice(object):
         Qmut.unlock()
         QmutVideo.unlock()
 
+        # 初始化箭头指向
+        self.Arrow_indication(0, False)
+        self.Arrow_indication(1, False)
+        self.Arrow_indication(2, False)
+        self.Arrow_indication(3, False)
+
         print("初始化参数成功")
 
         self.RandomSymbol = random.randint(0,2)
@@ -792,6 +797,15 @@ class Random_Practice(object):
         self.right_Number_LineEdit_4.textChanged.connect(lambda: self.textchanged(self.right_Number_LineEdit_4,4))
 
 
+        self.right_LineEdit_label_1 = QLabel(self.frame)
+        self.right_LineEdit_label_2 = QLabel(self.frame)
+        self.right_LineEdit_label_3 = QLabel(self.frame)
+        self.right_LineEdit_label_4 = QLabel(self.frame)
+        self.right_LineEdit_label_1.setGeometry(QtCore.QRect(125, 600, 100, 100))
+        self.right_LineEdit_label_2.setGeometry(QtCore.QRect(425, 600, 100, 100))
+        self.right_LineEdit_label_3.setGeometry(QtCore.QRect(725, 600, 100, 100))
+        self.right_LineEdit_label_4.setGeometry(QtCore.QRect(865, 600, 100, 100))
+
         self.right_top_time_label = QLabel(self.frame)
         self.right_top_label_1 = QLabel(self.frame)
         self.right_top_label_2 = QLabel(self.frame)
@@ -801,9 +815,7 @@ class Random_Practice(object):
         self.right_top_time_label.setGeometry(QtCore.QRect(500, 0, 130, 140))
         self.right_top_label_1.setGeometry(QtCore.QRect(480, 140, 80, 120))
         self.right_top_label_2.setGeometry(QtCore.QRect(550, 140, 80, 120))
-        self.right_bottom_label_1.setGeometry(QtCore.QRect(490, 720, 200, 140))
-        # self.right_Number_LineEdit_1.setStyleSheet("background-image:url(../images/number2.png")
-        # self.right_Number_LineEdit_1.setStyleSheet("background-image:url(:../images/number2.png);\n""background-attachment:fixed;\n""background-repeat:none;\n""background-position:center")
+        self.right_bottom_label_1.setGeometry(QtCore.QRect(490, 730, 200, 140))
 
         self.right_top_time_label.setPixmap(QPixmap("../images/time.png"))
         self.right_top_time_label.setScaledContents(True)  # 让图片自适应label大小
@@ -869,7 +881,7 @@ class Random_Practice(object):
         # border-image: url(:../ images / screen2.jpg);
         self.frame.setStyleSheet('''
             QWidget#Frame{
-                border-image:url(../images/screen3.jpg);
+                border-image:url(../images/screen7.jpg);
                 border-top:1px solid white;
                 border-bottom:1px solid white;
                 border-right:1px solid white;
@@ -1275,6 +1287,14 @@ class Random_Practice(object):
     # 通过按钮查看答案
     def GetAnswer(self):
         print("查看答案")
+
+        # 清除箭头
+        self.Arrow_indication(0, False)
+        self.Arrow_indication(1, False)
+        self.Arrow_indication(2, False)
+        self.Arrow_indication(3, False)
+
+
         self.GetAnswerFlag = True
         self.timevideothread.SetVideoSingleton(True)
         VideoSingleton.SetShowFlag(False)
@@ -1419,6 +1439,7 @@ class Random_Practice(object):
 
             # 获得编辑框列表需要手势识别的下标
             self.Changelst = copy.deepcopy(self.lst)
+            self.show_Arrow()
             VideoThreadEnd = False
             # print("QLineEditCount ",QLineEditCount)
             self.timevideothread.start()
@@ -1489,6 +1510,10 @@ class Random_Practice(object):
                 # 获得编辑框列表需要手势识别的下标
                 self.Changelst = copy.deepcopy(self.lst)
                 VideoThreadEnd = False
+
+                # 显示箭头
+                self.show_Arrow()
+
                 # print("QLineEditCount ",QLineEditCount)
                 self.timevideothread.start()
                 Button_timeout.unlock()
@@ -1559,6 +1584,7 @@ class Random_Practice(object):
                 self.index = i
                 break
 
+        self.show_Arrow()
         print("before GetTimeVideoResult self.Changelst", self.Changelst)
 
         if self.index == 0:
@@ -1593,6 +1619,8 @@ class Random_Practice(object):
                     self.GetTipsValueFailFirst()
                     # self.right_Number_LineEdit_5.setText("回答错误，重新根据提示摆出酷酷的手势")
                     self.Changelst = copy.deepcopy(self.lst)
+                    self.show_Arrow()
+
                     print("GetTimeVideoResult self.Changelst",self.Changelst)
                     print("GetTimeVideoResult self.lst", self.lst)
 
@@ -1718,3 +1746,40 @@ class Random_Practice(object):
         else:
             right_Number_LineEdit.setReadOnly(False)
             right_Number_LineEdit.setStyleSheet("color:white;font:30px;background:transparent;border-width:0;")
+
+
+    def show_Arrow(self):
+        self.Arrow_indication(0, False)
+        self.Arrow_indication(1, False)
+        self.Arrow_indication(2, False)
+        self.Arrow_indication(3, False)
+
+        for i in range(0,len(self.Changelst)):
+            if self.Changelst[i]:
+                self.Arrow_indication(i,True)
+                break
+
+    # 设置箭头
+    def Arrow_indication(self,index,flag):
+        if flag:
+            if index == 0:
+                self.right_LineEdit_label_1.setPixmap(QPixmap("../images/箭头2.png"))
+                self.right_LineEdit_label_1.setScaledContents(True)  # 让图片自适应label大小
+            elif index == 1:
+                self.right_LineEdit_label_2.setPixmap(QPixmap("../images/箭头2.png"))
+                self.right_LineEdit_label_2.setScaledContents(True)  # 让图片自适应label大小
+            elif index == 2:
+                self.right_LineEdit_label_3.setPixmap(QPixmap("../images/箭头2.png"))
+                self.right_LineEdit_label_3.setScaledContents(True)  # 让图片自适应label大小
+            elif index == 3:
+                self.right_LineEdit_label_4.setPixmap(QPixmap("../images/箭头2.png"))
+                self.right_LineEdit_label_4.setScaledContents(True)  # 让图片自适应label大小
+        else:
+            if index == 0:
+                self.right_LineEdit_label_1.setPixmap(QPixmap(""))
+            if index == 1:
+                self.right_LineEdit_label_2.setPixmap(QPixmap(""))
+            if index == 2:
+                self.right_LineEdit_label_3.setPixmap(QPixmap(""))
+            if index == 3:
+                self.right_LineEdit_label_4.setPixmap(QPixmap(""))

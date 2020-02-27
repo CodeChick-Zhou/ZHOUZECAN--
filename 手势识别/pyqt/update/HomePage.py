@@ -1,3 +1,4 @@
+
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -5,10 +6,11 @@ from PyQt5.QtGui import *
 import sys
 import qtawesome
 import time
-from NN_multiplication_table import NN_Table
 from Random_practice import Random_Practice
+from NN_multiplication_table import NN_Table
 from Examination import Examination
 from VideoWorkThread import VideoSingleton
+from ContactUs import ContactUs
 
 
 class HomeWorkThread(QThread):
@@ -33,7 +35,7 @@ class SleepThread(QThread):
 class AbnormityWindow(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("异形窗口")
+        self.setWindowTitle("喵喵喵")
         self.pix = QBitmap('../images/mask2.png')
         self.resize(self.pix.size())
         self.setMask(self.pix)
@@ -228,20 +230,34 @@ class Main_ui(QWidget):
         self.Widget3.frame.setVisible(False)
         self.Widget3.frame1.setVisible(False)
 
+        self.Widget4 = ContactUs(self)
+        self.Widget4.frame.setVisible(False)
+
         self.pushButton_1.clicked.connect(self.on_pushButton_enter_clicked_1)
         self.pushButton_2.clicked.connect(self.on_pushButton_enter_clicked_2)
         self.pushButton_3.clicked.connect(self.on_pushButton_enter_clicked_3)
+        self.pushButton_4.clicked.connect(self.on_pushButton_enter_clicked_4)
         self.Widget1.right_button_2.clicked.connect(self.on_pushButton_enter_clicked_sleep)
         self.Widget2.right_button_2.clicked.connect(self.on_pushButton_enter_clicked_sleep2)
         self.Widget3.pushButton_4.clicked.connect(self.on_pushButton_enter_clicked)
+        self.Widget4.pushButton_1.clicked.connect(self.on_pushButton_enter_clicked)
+
+        self.center()
+        print("self.frame.x()",self.x())
+        print("self.frame.y()",self.y())
+        # self.pushButton_quit.clicked.connect(self.on_pushButton_enter_clicked)
 
         # VideoSingleton.start()
+
+    # def on_pushButton_quit(self):
+
 
     def on_pushButton_enter_clicked_1(self):
         self.Widget1.frame.setVisible(True)
         self.Widget2.frame.setVisible(False)
         self.Widget3.frame.setVisible(False)
-        self.Widget3.frame1.setVisible(False)
+        self.Widget4.frame.setVisible(False)
+        # self.Widget3.frame1.setVisible(False)
         self.frame.setVisible(False)
         print("九九乘法表")
         self.Widget1.Start()
@@ -250,7 +266,8 @@ class Main_ui(QWidget):
         self.Widget1.frame.setVisible(False)
         self.Widget2.frame.setVisible(True)
         self.Widget3.frame.setVisible(False)
-        self.Widget3.frame1.setVisible(False)
+        self.Widget4.frame.setVisible(False)
+        # self.Widget3.frame1.setVisible(False)
         self.frame.setVisible(False)
         print("随机练习")
         self.Widget2.Start()
@@ -259,14 +276,28 @@ class Main_ui(QWidget):
         self.Widget1.frame.setVisible(False)
         self.Widget2.frame.setVisible(False)
         self.Widget3.frame.setVisible(True)
-        self.Widget3.frame1.setVisible(False)
+        # self.Widget3.frame1.setVisible(False)
+        self.Widget4.frame.setVisible(False)
+
+        print("self.Widget3.frame.x()",self.Widget3.frame.frameGeometry().x())
+        print("self.Widget3.frame.y()",self.Widget3.frame.frameGeometry().y())
+        print("self.frame.x()",self.x())
+        print("self.frame.y()",self.y())
         self.frame.setVisible(False)
+
+    def on_pushButton_enter_clicked_4(self):
+        self.Widget1.frame.setVisible(False)
+        self.Widget2.frame.setVisible(False)
+        self.Widget3.frame.setVisible(False)
+        self.frame.setVisible(False)
+        self.Widget4.frame.setVisible(True)
 
     def on_pushButton_enter_clicked(self):
         self.Widget1.frame.setVisible(False)
         self.Widget2.frame.setVisible(False)
         self.Widget3.frame.setVisible(False)
-        self.Widget3.frame1.setVisible(False)
+        self.Widget4.frame.setVisible(False)
+        # self.Widget3.frame1.setVisible(False)
         self.frame.setVisible(True)
 
     def on_pushButton_enter_clicked_sleep(self):
@@ -288,6 +319,12 @@ class Main_ui(QWidget):
         self.Widget2.right_button_1.setEnabled(True)
         self.Widget2.right_button_2.setEnabled(True)
 
+    def center(self):
+        screen = QDesktopWidget().screenGeometry()
+        size = self.geometry()
+        self.move((screen.width() - size.width()) / 2,
+                  (screen.height() - size.height()) / 2)
+
 
 # 结束首页动画，展示主页面
 def HomePage(window,main_window):
@@ -295,19 +332,25 @@ def HomePage(window,main_window):
     main_window.show()
 
 if __name__ == "__main__":
+    print("start")
     app = QApplication(sys.argv)
+    print("init QApplication,ui")
     window = Main_ui()
     AbWindow = AbnormityWindow()
-    # AbWindow.show()
-    window.show()
+    AbWindow.show()
+    # window.show()
+
+    # window.move(300,300)
+    print("window.x()", window.x())
+    print("window.y()", window.y())
 
     # 开始摄像头
     VideoSingleton.start()
     VideoSingleton.SetShowFlag(False)
 
-    # workthread = HomeWorkThread()
-    # workthread.timer.connect(lambda:HomePage(AbWindow,window))
-    # workthread.start()
+    workthread = HomeWorkThread()
+    workthread.timer.connect(lambda:HomePage(AbWindow,window))
+    workthread.start()
 
-
+    print("end while")
     sys.exit(app.exec_())
