@@ -6,23 +6,29 @@ MIN_DESCRIPTOR = 32  # surprisingly enough, 2 descriptors are already enough
 
 
 ##计算傅里叶描述子
+
 def fourierDesciptor(res):
-    # Laplacian算子进行八邻域检测
+    #Laplacian算子进行八邻域检测
     gray = cv2.cvtColor(res, cv2.COLOR_BGR2GRAY)
-    dst = cv2.Laplacian(gray, cv2.CV_16S, ksize=3)
+    dst = cv2.Laplacian(gray, cv2.CV_16S, ksize = 3)
+    # cv2.imshow("dst", dst)
     Laplacian = cv2.convertScaleAbs(dst)
-    contour = find_contours(Laplacian)  # 提取轮廓点坐标
-    contour_array = contour[0][:, 0, :]  # 注意这里只保留区域面积最大的轮廓点坐标
-    ret_np = np.ones(dst.shape, np.uint8)  # 创建黑色幕布
-    ret = cv2.drawContours(ret_np, contour[0], -1, (255, 255, 255), 1)  # 绘制白色轮廓
+    # cv2.imshow("Laplacian",Laplacian)
+    contour = find_contours(Laplacian)#提取轮廓点坐标
+    contour_array = contour[0][:, 0, :]#注意这里只保留区域面积最大的轮廓点坐标
+    ret_np = np.ones(dst.shape, np.uint8) #创建黑色幕布
+    ret = cv2.drawContours(ret_np,contour[0],-1,(255,255,255),1) #绘制白色轮廓
+
     contours_complex = np.empty(contour_array.shape[:-1], dtype=complex)
-    contours_complex.real = contour_array[:, 0]  # 横坐标作为实数部分
-    contours_complex.imag = contour_array[:, 1]  # 纵坐标作为虚数部分
-    fourier_result = np.fft.fft(contours_complex)  # 进行傅里叶变换
+    contours_complex.real = contour_array[:,0]#横坐标作为实数部分
+    contours_complex.imag = contour_array[:,1]#纵坐标作为虚数部分
+    fourier_result = np.fft.fft(contours_complex)#进行傅里叶变换
     # fourier_result = np.fft.fftshift(fourier_result)
-    descirptor_in_use = truncate_descriptor(fourier_result)  # 截短傅里叶描述子
+
+    descirptor_in_use = truncate_descriptor(fourier_result)#截短傅里叶描述子
+
     # reconstruct(ret, descirptor_in_use)
-    return ret, descirptor_in_use
+    return ret,descirptor_in_use
 
 
 def find_contours(Laplacian):
@@ -64,6 +70,6 @@ def reconstruct(img, descirptor_in_use):
 
     black_np = np.ones(img.shape, np.uint8)  # 创建黑色幕布
     black = cv2.drawContours(black_np, contour_reconstruct, -1, (255, 255, 255), 1)  # 绘制白色轮廓
-    cv2.imshow("contour_reconstruct", black)
+    # cv2.imshow("contour_reconstruct", black)
     # cv2.imwrite('recover.png',black)
     return black

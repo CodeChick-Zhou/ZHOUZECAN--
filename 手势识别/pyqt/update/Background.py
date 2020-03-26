@@ -39,7 +39,7 @@ class Background(object):
                                         border:1px solid rgb(180, 180, 180);
                                         font-size:25px
                                         ''')
-        self.LineEdit_star.setText(File.curstars)
+        self.LineEdit_star.setText(str(File.curstars))
         self.LineEdit_star.setAlignment(Qt.AlignCenter)
 
         self.backbutton = QPushButton("退出", self.frame)
@@ -136,6 +136,9 @@ class Background(object):
     def writefile(self):
         File.writefile()
 
+
+    def start(self):
+        self.LineEdit_star.setText(str(File.curstars))
 
     def check(self,index):
         r = index.row()

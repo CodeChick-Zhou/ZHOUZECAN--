@@ -4,60 +4,13 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtGui import *
 import copy
 import random
+import pygame
+import time
 from finger_train import *
-import picture as pic
-import cv2
-import sys
-import qtawesome
+from MusicThread import MusicSingleton
 from VideoWorkThread import VideoSingleton
-
-
-# 九九乘法表
-Multiplication_Table = {0 : 1, 1 : 2,  2 : 3,  3 : 4,   4 : 5,   5 : 6,   6 : 7,   7 : 8,   8 : 9,
-                        9 : 4, 10 : 6, 11 : 8, 12 : 10, 13 : 12, 14 : 14, 15 : 16, 16 : 18,
-                        17 : 9, 18 : 12, 19 : 15, 20 : 18, 21 : 21, 22 : 24, 23 : 27,
-                        24 : 16, 25 : 20, 26 : 24, 27 : 28, 28 : 32, 29 : 36,
-                        30 : 25, 31 : 30, 32 : 35, 33 : 40, 34 : 45,
-                        35 : 36, 36 : 42, 37 : 48, 38 : 54,
-                        39 : 49, 40 : 56, 41 : 63,
-                        42 : 64, 43 : 72,
-                        44 : 81
-                        }
-
-Multiplication_Table_Formula = { 0 : [1,1,1], 1 : [1,2,2], 2 : [1,3,3], 3 : [1,4,4], 4 : [1,5,5], 5 : [1,6,6], 6 : [1,7,7], 7 : [1,8,8], 8 : [1,9,9],
-                                 9 : [2,2,4], 10 : [2,3,6], 11 : [2,4,8], 12 : [2,5,10], 13 : [2,6,12], 14 : [2,7,14], 15 : [2,8,16], 16 : [2,9,18],
-                                 17 : [3,3,9], 18 : [3,4,12], 19 : [3,5,15], 20 : [3,6,18], 21 : [3,7,21], 22 : [3,8,24], 23 : [3,9,27],
-                                 24 : [4,4,16], 25 : [4,5,20], 26 : [4,6,24], 27 : [4,7,28], 28 : [4,8,32], 29 : [4,9,36],
-                                 30 : [5,5,25], 31 : [5,6,30], 32 : [5,7,35], 33 : [5,8,40], 34 : [5,9,45],
-                                 35 : [6,6,36], 36 : [6,7,42], 37 : [6,8,48], 38 : [6,9,54],
-                                 39 : [7,7,49], 40 : [7,8,56], 41 : [7,9,63],
-                                 42 : [8,8,64], 43 : [8,9,72],
-                                 44 : [9,9,81]
-                                 }
-
-Multiplication_Table_Pre = { 1 : [[1,1]], 2 : [[1,2]], 3 : [[1,3]], 4 : [[2,2],[1,4]], 5 : [[1,5]], 6 : [[1,6],[2,3]],
-                             7 : [[1,7]], 8 : [[1,8],[2,4]], 9 : [[1,9],[3,3]], 10 : [[2,5]], 12 : [[2,6],[3,4]],
-                             14 : [[2,7]], 15 : [[3,5]], 16 : [[4,4],[2,8]], 18 : [[2,9],[3,6]], 20 : [[4,5]],
-                             21 : [[3,7]], 24 : [[3,8],[4,6]], 25 : [[5,5]], 27 : [[3,9]], 28 : [[4,7]], 30 : [[5,6]],
-                             32 : [[4,8]], 35 : [[5,7]], 36 : [[6,6],[4,9]], 40 : [[5,8]], 42 : [[6,7]], 45 : [[5,9]],
-                             48 : [[6,8]], 49 : [[7,7]], 54 : [[6,9]], 56 : [[7,8]], 63 : [[7,9]], 72 : [[8,9]],
-                             81 : [[9,9]]
-                             }
-
-# 加号 2 - 18
-Add_Table_Pre = { 2 : [[1,1]], 3 : [[1,2]], 4:[[2,2],[1,3]], 5 : [[1,4],[2,3]], 6 : [[1,5],[2,4],[3,3]],
-                  7 : [[1,6],[2,5],[3,4]], 8 : [[1,7],[2,6],[3,5],[4,4]], 9 : [[1,8],[2,7],[3,6],[4,5]],
-                  10 : [[1,9],[2,8],[3,7],[4,6],[5,5]], 11 : [[2,9],[3,8],[4,7],[5,6]], 12 : [[3,9],[4,8],[5,7],[6,6]],
-                  13 : [[4,9],[5,8],[6,7]], 14 : [[5,9],[6,8],[7,7]], 15 : [[6,9],[7,8]], 16 : [[7,9],[8,8]],
-                  17 : [[8,9]], 18 : [[9,9]]
-                  }
-
-# 减号
-Minus_Table_Pre = { 2 : [[1,1]], 3 : [[1,2],[2,1]], 4 : [[1,3],[2,2],[3,1]], 5 : [[1,4],[2,3],[3,2],[4,1]],
-                    6 : [[1,5],[2,4],[3,3],[4,2],[5,1]], 7 : [[1,6],[2,5],[3,4],[4,3],[5,2],[6,1]],
-                    8 : [[1,7],[2,6],[3,5],[4,4],[5,3],[6,2],[7,1]], 9: [[1,8],[2,7],[3,6],[4,5],[5,4],[6,3],[7,2],[8,1]]
-
-}
+from Table import *
+import GetFileName as File
 
 NExamMutx = QMutex()
 QmutVideo = QMutex()
@@ -101,6 +54,7 @@ class NormalExamTimeWorkThread(QThread):
         self.SignalButton.emit()
         NExamMutx.unlock()
 
+# 手势识别考试定时器
 class VDTimeVideoThread(QThread):
 
     def __init__(self):
@@ -157,9 +111,6 @@ class VDTimeVideoThread(QThread):
                 self.timer.emit()  # 发送timer信号
                 print(" self.timer.emit()")
 
-            # print("TimeVideoThread self.VideoStopFlag ", self.VideoStopFlag)
-            # print("TimeVideoThread 结束 ",Rsec)
-            # print("QLineEditCount ", QLineEditCount)
             Nsec = Asec
             self.count -= 1
             print("self.count",self.count)
@@ -168,6 +119,7 @@ class VDTimeVideoThread(QThread):
         VideoThreadEnd = True
         QmutVideo.unlock()
 
+# 用于纠正错误的手势识别定时器
 class TimeVideoThread(QThread):
 
     def __init__(self):
@@ -231,6 +183,7 @@ class TimeVideoThread(QThread):
         VideoThreadEnd = True
         QmutVideo.unlock()
 
+# 定时三秒的定时器，平滑
 class TimeVideoSleepThread(QThread):
     timer = pyqtSignal()
     end = pyqtSignal()
@@ -303,6 +256,48 @@ class Examination(object):
         self.frame.setVisible(False)
         self.frame1.setVisible(False)
         self.frame2.setVisible(False)
+
+    # 改变背景
+    def changebackimage(self):
+        self.frame1.setStyleSheet('''
+            QWidget#Frame1{
+                border-image:url('''+File.path[File.curpathindex-1]+''');
+                border-top:1px solid white;
+                border-bottom:1px solid white;
+                border-right:1px solid white;
+                border-top-left-radius:10px;
+                border-bottom-left-radius:10px;
+                border-top-right-radius:10px;
+                border-bottom-right-radius:10px;
+            }
+        ''')
+
+        self.frame2.setStyleSheet('''
+            QPushButton{border:none;color:white;font-size:20px}
+            QPushButton:hover{
+                    border-left:4px solid white;
+                    font-size:23px;
+                    background:#4affa5;
+                    border-top:1px solid white;
+                    border-bottom:1px solid white;
+                    border-left:1px solid white;
+                    border-top-left-radius:10px;
+                    border-bottom-left-radius:10px;
+                    border-top-right-radius:10px;
+                    border-bottom-right-radius:10px;
+            }
+
+            QWidget#Frame2{
+                border-image:url('''+File.path[File.curpathindex-1]+''');
+                border-top:1px solid white;
+                border-bottom:1px solid white;
+                border-right:1px solid white;
+                border-top-left-radius:10px;
+                border-bottom-left-radius:10px;
+                border-top-right-radius:10px;
+                border-bottom-right-radius:10px;
+            }
+        ''')
 
     # 显示对话框
     def ShowSubmitDialog(self):
@@ -470,6 +465,9 @@ class Examination(object):
     # 获得手势识别的值，用于修改答案
     def GetTimeVideoResult(self,result):
 
+        # 语音提醒
+        MusicSingleton.start()
+
         self.NEQuestionCur[self.QuestionIndex][self.GAnswerIndex[0]] = result
         if self.GAnswerIndex[0] == 0:
             self.ChangeNumberImage(self.right_Number_LineEdit_1,result)
@@ -620,6 +618,16 @@ class Examination(object):
 
     # 手势识别调用的函数
     def VDGetTimeVideoResult(self,result):
+
+        # pygame.mixer.init()
+        # track = pygame.mixer.music.load("../music/ding.mp3")
+        # pygame.mixer.music.play()
+        # time.sleep(0.5)
+        # pygame.mixer.music.stop()
+
+        # 语音提醒
+        MusicSingleton.start()
+
         print("VDGetTimeVideoResult() start")
         self.NEQuestionCur[self.QuestionIndex][self.GAnswerIndex[0]] = result
         if self.GAnswerIndex[0] == 0:
@@ -665,6 +673,8 @@ class Examination(object):
     FirstVDExam = True
     FirstErrorVideo = True
     def VideoExam(self):
+        self.changebackimage()
+
         self.VDstart = True
         self.NDstart = False
 
@@ -718,7 +728,7 @@ class Examination(object):
         VideoSingleton.timer.connect(self.VDGetTimeVideoResult)
 
         # 获得题目
-        self.NormalExamQuestion()
+        self.ExamQuestion()
 
         # 当前题目下标
         self.QuestionIndex = 0
@@ -735,11 +745,6 @@ class Examination(object):
         QLineEditCount = len(self.GAnswer)
 
         print("self.VDcount",self.VDcount,"QLineEditCount",QLineEditCount)
-
-        # for i in range(0, len(self.NEStatus[self.QuestionIndex])):
-        #     if self.NEStatus[self.QuestionIndex][i]:
-        #         QLineEditCount += 1
-
 
         self.right_Number_LineEdit_5.setText("请根据题目，摆出相应的手势,使得公式相等")
         self.right_Number_LineEdit_6.setText("请输入第一个框")
@@ -758,6 +763,8 @@ class Examination(object):
     NDstart = False
     VDstart = False
     def NormalExam(self):
+        self.changebackimage()
+
         self.VDstart = False
         self.NDstart = True
 
@@ -809,7 +816,7 @@ class Examination(object):
         VideoSingleton.timer.connect(self.GetTimeVideoResult)
 
         # 获得题目
-        self.NormalExamQuestion()
+        self.ExamQuestion()
 
         # 当前题目下标
         self.QuestionIndex = 0
@@ -1206,7 +1213,7 @@ class Examination(object):
         self.right_button_5.setHidden(True)
         self.right_button_2.setHidden(False)
 
-
+    # 改变计时时间
     def ChangeTime(self):
         global Nsec
         if Nsec <= 9:
@@ -1230,7 +1237,7 @@ class Examination(object):
     # Easy-180  Medium-120   difficult-180
     Timing = 180
     # Number of questions
-    NumberQuestions = 2
+    NumberQuestions = 5
     def SetDifficulty(self,result):
         global Nsec,Asec
         self.Difficulty = result
@@ -1270,14 +1277,32 @@ class Examination(object):
 
         self.tip1 = "本次一共有" + str(self.NumberQuestions) + "题，回答正确为" + str(self.correct) + "道"
         self.frame2_QlineEdit1.setText(self.tip1)
-        self.tip2 = "你的得分为:" + str(self.score) + "分"
+        # self.tip2 = "你的得分为:" + str(self.score) + "分"
+        # self.frame2_QlineEdit2.setText(self.tip2)
+
+
+        # 设置获得的星星
+        staradd = 0
+        if self.score < 60:
+            staradd = 0
+        elif self.score < 70:
+            staradd = 1
+        elif self.score < 80:
+            staradd = 2
+        elif self.score < 90:
+            staradd = 3
+        elif self.score < 100:
+            staradd = 4
+        elif self.score == 100:
+            staradd = 5
+
+        print("File.curstars", File.curstars)
+        File.curstars += staradd
+        print("File.curstars",File.curstars)
+
+        self.tip2 = "你的得分为:" + str(self.score) + "分,获得了"+str(staradd)+"个⭐"
         self.frame2_QlineEdit2.setText(self.tip2)
-
-
-    #
-    # def SubGetScore(self):
-    #     self.GetScore()
-
+        File.writefilestar()
 
     # 获得分数
     def GetScore(self):
@@ -1372,7 +1397,7 @@ class Examination(object):
     NEAnswerCur = []
     # 编辑框状态
     NEStatus = []
-    def NormalExamQuestion(self):
+    def ExamQuestion(self):
         # 答案
         self.NEQuestion = []
         # 题目现状
@@ -1384,7 +1409,7 @@ class Examination(object):
 
         count = self.NumberQuestions
         while count:
-            i = random.randint(0,4)
+            i = random.randint(0,6)
             # 加法
             if i == 0:
                 self.value = random.randint(2,18)
@@ -1781,7 +1806,6 @@ class Examination(object):
             self.timevideothread.start()
             return
 
-
     # 获得答案
     GAnswer=[]
     GAnswerIndex = []
@@ -1801,7 +1825,6 @@ class Examination(object):
         else:
             right_Number_LineEdit.setReadOnly(False)
             right_Number_LineEdit.setStyleSheet("color:white;font:30px;background:transparent;border-width:0;")
-
 
     # 显示题目
     def ShowQLineEdit(self):
@@ -1887,7 +1910,6 @@ class Examination(object):
         else:
             self.right_top_label_3.setPixmap(QPixmap("../images/空.png"))
             self.right_top_label_3.setScaledContents(True)  # 让图片自适应label大小
-
 
     # 显示箭头
     def show_Arrow(self):

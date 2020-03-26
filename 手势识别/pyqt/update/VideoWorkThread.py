@@ -1,4 +1,3 @@
-
 import time
 import sys
 from PyQt5.QtWidgets import *
@@ -11,7 +10,7 @@ import picture as pic
 import cv2
 
 # 手势识别的模块的文件地址
-Model_Path = "../model/model_2019_11_20_best.hdf5"
+Model_Path = "../model/model_2020_02_22_test.hdf5"
 # 正常大小无衬线字体
 font = cv2.FONT_HERSHEY_SIMPLEX
 fontsize = 1
@@ -36,10 +35,7 @@ class VideoThread(QThread):
     def work(self):
         self.timer.emit(int(self.result))
 
-    def Getbinary(self,frame, x0, y0, width, height, finger_model):
-        # 得到处理后的照片
-        res = pic.new_binaryMask(frame, x0, y0, width, height)
-
+    def Getvalue(self,frame,res,finger_model):
         out = 0
         """这里可以插入代码调用网络"""
         test_image = res
@@ -52,11 +48,28 @@ class VideoThread(QThread):
         cv2.putText(frame, "the finger is: %d" % out, (x0, y0), font, fontsize, (0, 0, 255))  # 标注字体
         return out,res
 
+
+    def Getresult(self,frame, x0, y0, width, height, finger_model):
+        # 得到处理后的照片
+        res = pic.new_binaryMask(frame, x0, y0, width, height)
+
+        return self.Getvalue(frame, res, finger_model)
+        # out = 0
+        # """这里可以插入代码调用网络"""
+        # test_image = res
+        # test_image = cv.resize(test_image, (300, 300))
+        # test_image = np.array(test_image, dtype='f')
+        # test_image = test_image / 255.0
+        # test_image = test_image.reshape([-1, 300, 300, 1])
+        # pdt = finger_model.predict(test_image)
+        # out = np.argmax(pdt, axis=1)
+        # cv2.putText(frame, "the finger is: %d" % out, (x0, y0), font, fontsize, (0, 0, 255))  # 标注字体
+
     def startvideo(self,finger_model):
         # 开启摄像头
         cap = cv2.VideoCapture(0)
 
-        self.lst = [0] * 10
+        self.lst = [0] * 20
         self.index = 0
 
         while (True):
@@ -67,10 +80,10 @@ class VideoThread(QThread):
             # 显示ROI区域  #调用函数
 
             # 获得图像预测的数值
-            VideoNumber,res= self.Getbinary(frame, x0, y0, width, height, finger_model)
+            VideoNumber,res= self.Getresult(frame, x0, y0, width, height, finger_model)
 
 
-            if self.index != 10:
+            if self.index != 20:
                 self.lst[self.index] = int(VideoNumber)
             else:
                 self.index = 0

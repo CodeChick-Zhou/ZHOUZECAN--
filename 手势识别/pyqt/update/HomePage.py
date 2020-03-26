@@ -11,7 +11,8 @@ from NN_multiplication_table import NN_Table
 from Examination import Examination
 from VideoWorkThread import VideoSingleton
 from ContactUs import ContactUs
-
+from Background import Background
+from MusicThread import MusicSingleton
 
 class HomeWorkThread(QThread):
     timer = pyqtSignal()  # 5秒发送一次信号
@@ -161,15 +162,15 @@ class Main_ui(QWidget):
         self.pushButton_3.setFixedSize(300, 40)
         self.verticalLayout.addWidget(self.pushButton_3)
 
-        self.pushButton_4 = QtWidgets.QPushButton(qtawesome.icon('fa.star', color='white'),"联系我们",self.verticalLayoutWidget)
-        self.pushButton_4.setObjectName("HomeButton")
-        self.pushButton_4.setFixedSize(300, 40)
-        self.verticalLayout.addWidget(self.pushButton_4)
-
-        self.pushButton_5 = QtWidgets.QPushButton(qtawesome.icon('fa.question', color='white'),"遇到问题",self.verticalLayoutWidget)
+        self.pushButton_5 = QtWidgets.QPushButton(qtawesome.icon('fa.star', color='white'),"背景更换",self.verticalLayoutWidget)
         self.pushButton_5.setObjectName("HomeButton")
         self.pushButton_5.setFixedSize(300, 40)
         self.verticalLayout.addWidget(self.pushButton_5)
+
+        self.pushButton_4 = QtWidgets.QPushButton(qtawesome.icon('fa.question', color='white'),"联系我们",self.verticalLayoutWidget)
+        self.pushButton_4.setObjectName("HomeButton")
+        self.pushButton_4.setFixedSize(300, 40)
+        self.verticalLayout.addWidget(self.pushButton_4)
 
         self.frame.setStyleSheet('''
         QWidget#Fram{
@@ -233,14 +234,19 @@ class Main_ui(QWidget):
         self.Widget4 = ContactUs(self)
         self.Widget4.frame.setVisible(False)
 
+        self.Widget5 = Background(self)
+        self.Widget5.frame.setVisible(False)
+
         self.pushButton_1.clicked.connect(self.on_pushButton_enter_clicked_1)
         self.pushButton_2.clicked.connect(self.on_pushButton_enter_clicked_2)
         self.pushButton_3.clicked.connect(self.on_pushButton_enter_clicked_3)
         self.pushButton_4.clicked.connect(self.on_pushButton_enter_clicked_4)
+        self.pushButton_5.clicked.connect(self.on_pushButton_enter_clicked_5)
         self.Widget1.right_button_2.clicked.connect(self.on_pushButton_enter_clicked_sleep)
         self.Widget2.right_button_2.clicked.connect(self.on_pushButton_enter_clicked_sleep2)
         self.Widget3.pushButton_4.clicked.connect(self.on_pushButton_enter_clicked)
         self.Widget4.pushButton_1.clicked.connect(self.on_pushButton_enter_clicked)
+        self.Widget5.backbutton.clicked.connect(self.on_pushButton_enter_clicked)
 
         self.center()
         print("self.frame.x()",self.x())
@@ -259,6 +265,7 @@ class Main_ui(QWidget):
         self.Widget4.frame.setVisible(False)
         # self.Widget3.frame1.setVisible(False)
         self.frame.setVisible(False)
+        self.Widget5.frame.setVisible(False)
         print("九九乘法表")
         self.Widget1.Start()
 
@@ -269,6 +276,7 @@ class Main_ui(QWidget):
         self.Widget4.frame.setVisible(False)
         # self.Widget3.frame1.setVisible(False)
         self.frame.setVisible(False)
+        self.Widget5.frame.setVisible(False)
         print("随机练习")
         self.Widget2.Start()
 
@@ -284,6 +292,7 @@ class Main_ui(QWidget):
         print("self.frame.x()",self.x())
         print("self.frame.y()",self.y())
         self.frame.setVisible(False)
+        self.Widget5.frame.setVisible(False)
 
     def on_pushButton_enter_clicked_4(self):
         self.Widget1.frame.setVisible(False)
@@ -291,12 +300,23 @@ class Main_ui(QWidget):
         self.Widget3.frame.setVisible(False)
         self.frame.setVisible(False)
         self.Widget4.frame.setVisible(True)
+        self.Widget5.frame.setVisible(False)
+
+    def on_pushButton_enter_clicked_5(self):
+        self.Widget1.frame.setVisible(False)
+        self.Widget2.frame.setVisible(False)
+        self.Widget3.frame.setVisible(False)
+        self.frame.setVisible(False)
+        self.Widget4.frame.setVisible(False)
+        self.Widget5.frame.setVisible(True)
+        self.Widget5.start()
 
     def on_pushButton_enter_clicked(self):
         self.Widget1.frame.setVisible(False)
         self.Widget2.frame.setVisible(False)
         self.Widget3.frame.setVisible(False)
         self.Widget4.frame.setVisible(False)
+        self.Widget5.frame.setVisible(False)
         # self.Widget3.frame1.setVisible(False)
         self.frame.setVisible(True)
 
@@ -347,6 +367,7 @@ if __name__ == "__main__":
     # 开始摄像头
     VideoSingleton.start()
     VideoSingleton.SetShowFlag(False)
+
 
     workthread = HomeWorkThread()
     workthread.timer.connect(lambda:HomePage(AbWindow,window))

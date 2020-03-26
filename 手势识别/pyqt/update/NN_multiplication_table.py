@@ -1,4 +1,3 @@
-
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -11,6 +10,9 @@ import cv2
 import sys
 import qtawesome
 from VideoWorkThread import VideoSingleton
+from MusicThread import MusicSingleton
+from Table import *
+import GetFileName as File
 
 
 
@@ -21,37 +23,6 @@ NumberDict = {'1': "../images/number1.png", '2': "../images/number2.png", '3': "
 
 SymbolDict = {0: "../images/加号.png", 1: "../images/减号.png" , 2: "../images/乘号.png"}
 
-# 九九乘法表
-Multiplication_Table = {0 : 1, 1 : 2,  2 : 3,  3 : 4,   4 : 5,   5 : 6,   6 : 7,   7 : 8,   8 : 9,
-                        9 : 4, 10 : 6, 11 : 8, 12 : 10, 13 : 12, 14 : 14, 15 : 16, 16 : 18,
-                        17 : 9, 18 : 12, 19 : 15, 20 : 18, 21 : 21, 22 : 24, 23 : 27,
-                        24 : 16, 25 : 20, 26 : 24, 27 : 28, 28 : 32, 29 : 36,
-                        30 : 25, 31 : 30, 32 : 35, 33 : 40, 34 : 45,
-                        35 : 36, 36 : 42, 37 : 48, 38 : 54,
-                        39 : 49, 40 : 56, 41 : 63,
-                        42 : 64, 43 : 72,
-                        44 : 81
-                        }
-
-Multiplication_Table_Formula = { 0 : [1,1,1], 1 : [1,2,2], 2 : [1,3,3], 3 : [1,4,4], 4 : [1,5,5], 5 : [1,6,6], 6 : [1,7,7], 7 : [1,8,8], 8 : [1,9,9],
-                                 9 : [2,2,4], 10 : [2,3,6], 11 : [2,4,8], 12 : [2,5,10], 13 : [2,6,12], 14 : [2,7,14], 15 : [2,8,16], 16 : [2,9,18],
-                                 17 : [3,3,9], 18 : [3,4,12], 19 : [3,5,15], 20 : [3,6,18], 21 : [3,7,21], 22 : [3,8,24], 23 : [3,9,27],
-                                 24 : [4,4,16], 25 : [4,5,20], 26 : [4,6,24], 27 : [4,7,28], 28 : [4,8,32], 29 : [4,9,36],
-                                 30 : [5,5,25], 31 : [5,6,30], 32 : [5,7,35], 33 : [5,8,40], 34 : [5,9,45],
-                                 35 : [6,6,36], 36 : [6,7,42], 37 : [6,8,48], 38 : [6,9,54],
-                                 39 : [7,7,49], 40 : [7,8,56], 41 : [7,9,63],
-                                 42 : [8,8,64], 43 : [8,9,72],
-                                 44 : [9,9,81]
-                                 }
-
-Multiplication_Table_Pre = { 1 : [[1,1]], 2 : [[1,2]], 3 : [[1,3]], 4 : [[2,2],[1,4]], 5 : [[1,5]], 6 : [[1,6],[2,3]],
-                             7 : [[1,7]], 8 : [[1,8],[2,4]], 9 : [[1,9],[3,3]], 10 : [[2,5]], 12 : [[2,6],[3,4]],
-                             14 : [[2,7]], 15 : [[3,5]], 16 : [[4,4],[2,8]], 18 : [[2,9],[3,6]], 20 : [[4,5]],
-                             21 : [[3,7]], 24 : [[3,8],[4,6]], 25 : [[5,5]], 27 : [[3,9]], 28 : [[4,7]], 30 : [[5,6]],
-                             32 : [[4,8]], 35 : [[5,7]], 36 : [[6,6],[4,9]], 40 : [[5,8]], 42 : [[6,7]], 45 : [[5,9]],
-                             48 : [[6,8]], 49 : [[7,7]], 54 : [[6,9]], 56 : [[7,8]], 63 : [[7,9]], 72 : [[8,9]],
-                             81 : [[9,9]]
-                             }
 
 # 定时器加锁，防止多个线程一起运行
 QmutNN = QMutex()
@@ -68,6 +39,7 @@ VideoThreadEnd = False
 # 初始化定时器时间
 sec = 30
 
+# 定时器线程
 class TimeWorkThread(QThread):
     def __init__(self):
         super().__init__()
@@ -99,6 +71,7 @@ class TimeWorkThread(QThread):
 # 编辑框个数
 QLineEditCount = 0
 
+# 手势识别定时器线程
 class TimeVideoThread(QThread):
 
     def __init__(self):
@@ -203,9 +176,26 @@ class NN_Table(object):
             b = sec%10
             self.ChangeNumberTime(self.right_top_label_1, self.right_top_label_2, a, b)
 
+    def changebackimage(self):
+        self.frame.setStyleSheet('''
+            QWidget#Frame{
+                border-image:url('''+File.path[File.curpathindex-1]+''');
+                border-top:1px solid white;
+                border-bottom:1px solid white;
+                border-right:1px solid white;
+                border-top-left-radius:10px;
+                border-bottom-left-radius:10px;
+                border-top-right-radius:10px;
+                border-bottom-right-radius:10px;
+            }
+        ''')
+
     # 线程类第一次初始化,防止信号绑定多个槽函数
     FirstConnect = True
     def Start(self):
+
+        self.changebackimage()
+
         if self.FirstConnect:
             self.timevideothread = TimeVideoThread()
             self.timevideothread.timer.connect(self.countTime)
@@ -292,10 +282,6 @@ class NN_Table(object):
             self.value3 = 0
             self.value4 = 0
 
-            # self.right_Number_LineEdit_1.setReadOnly(True)
-            # self.right_Number_LineEdit_2.setReadOnly(True)
-            # self.right_Number_LineEdit_3.setReadOnly(False)
-            # self.right_Number_LineEdit_4.setReadOnly(False)
             self.SetReadOnly(self.right_Number_LineEdit_1,True)
             self.SetReadOnly(self.right_Number_LineEdit_2,True)
             self.SetReadOnly(self.right_Number_LineEdit_3,False)
@@ -320,10 +306,6 @@ class NN_Table(object):
             self.value3 = int(self.rightvalue/10)
             self.value4 = int(self.rightvalue%10)
 
-            # self.right_Number_LineEdit_1.setReadOnly(False)
-            # self.right_Number_LineEdit_2.setReadOnly(False)
-            # self.right_Number_LineEdit_3.setReadOnly(True)
-            # self.right_Number_LineEdit_4.setReadOnly(True)
             self.SetReadOnly(self.right_Number_LineEdit_1,False)
             self.SetReadOnly(self.right_Number_LineEdit_2,False)
             self.SetReadOnly(self.right_Number_LineEdit_3,True)
@@ -838,6 +820,10 @@ class NN_Table(object):
     # 手势识别中获取结果并判断结果和流程
     ErrorCount = 0
     def GetTimeVideoResult(self,result):
+
+        # 语音提醒
+        MusicSingleton.start()
+
         self.index = -1
         self.indexflag = True
         global QLineEditCount,VideoThreadEnd
@@ -982,7 +968,7 @@ class NN_Table(object):
         VideoSingleton.SetShowFlag(False)
         self.timevideothread.SetVideoSingleton(True)
         self.right_bottom_label_1.setPixmap(QPixmap("../images/空.png"))
-        self.ChangeNumberTime(self.right_top_label_1, self.right_top_label_2, int(sec/10), int(sec%10))
+        # self.ChangeNumberTime(self.right_top_label_1, self.right_top_label_2, int(sec/10), int(sec%10))
 
         print("九九乘法表 DeleteFram End")
 
@@ -994,7 +980,6 @@ class NN_Table(object):
         else:
             right_Number_LineEdit.setReadOnly(False)
             right_Number_LineEdit.setStyleSheet("color:white;font:30px;background:transparent;border-width:0;")
-
 
     # 显示箭头
     def show_Arrow(self):

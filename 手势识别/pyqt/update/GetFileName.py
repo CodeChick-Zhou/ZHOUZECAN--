@@ -4,6 +4,7 @@ stars = []
 curstars = 0
 curpathindex = 0
 
+
 def GetFileName():
     index = 0
     file_name = 'backimage.txt'
@@ -30,7 +31,7 @@ def readfile():
     with open(file_name) as file_obj:
         for content in file_obj:
             if Firstflag:
-                curstars = content[6:-1]
+                curstars = int(content[6:-1])
                 Firstflag = False
             elif "curpathindex" in content:
                 cur = content.find(':')
@@ -64,6 +65,22 @@ def writefile():
         for content in file_obj:
             if "curpathindex" in content:
                 content = "curpathindex:"+str(curpathindex)+"\n"
+            file_data += content
+
+    with open(file_name, "w", encoding="utf-8") as f:
+        f.write(file_data)
+    print(file_data)
+
+
+
+def writefilestar():
+    global path, stars, curstars, curpathindex
+    file_name = 'backimage.txt'
+    file_data = ""
+    with open(file_name) as file_obj:
+        for content in file_obj:
+            if "stars" in content:
+                content = "stars:"+str(curstars)+"\n"
             file_data += content
 
     with open(file_name, "w", encoding="utf-8") as f:
