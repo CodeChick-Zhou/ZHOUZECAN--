@@ -1,4 +1,3 @@
-
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -11,6 +10,9 @@ import cv2
 import sys
 import qtawesome
 from VideoWorkThread import VideoSingleton
+from MusicThread import MusicSingleton
+from Table import *
+import GetFileName as File
 
 
 
@@ -21,37 +23,6 @@ NumberDict = {'1': "../images/number1.png", '2': "../images/number2.png", '3': "
 
 SymbolDict = {0: "../images/加号.png", 1: "../images/减号.png" , 2: "../images/乘号.png"}
 
-# 九九乘法表
-Multiplication_Table = {0 : 1, 1 : 2,  2 : 3,  3 : 4,   4 : 5,   5 : 6,   6 : 7,   7 : 8,   8 : 9,
-                        9 : 4, 10 : 6, 11 : 8, 12 : 10, 13 : 12, 14 : 14, 15 : 16, 16 : 18,
-                        17 : 9, 18 : 12, 19 : 15, 20 : 18, 21 : 21, 22 : 24, 23 : 27,
-                        24 : 16, 25 : 20, 26 : 24, 27 : 28, 28 : 32, 29 : 36,
-                        30 : 25, 31 : 30, 32 : 35, 33 : 40, 34 : 45,
-                        35 : 36, 36 : 42, 37 : 48, 38 : 54,
-                        39 : 49, 40 : 56, 41 : 63,
-                        42 : 64, 43 : 72,
-                        44 : 81
-                        }
-
-Multiplication_Table_Formula = { 0 : [1,1,1], 1 : [1,2,2], 2 : [1,3,3], 3 : [1,4,4], 4 : [1,5,5], 5 : [1,6,6], 6 : [1,7,7], 7 : [1,8,8], 8 : [1,9,9],
-                                 9 : [2,2,4], 10 : [2,3,6], 11 : [2,4,8], 12 : [2,5,10], 13 : [2,6,12], 14 : [2,7,14], 15 : [2,8,16], 16 : [2,9,18],
-                                 17 : [3,3,9], 18 : [3,4,12], 19 : [3,5,15], 20 : [3,6,18], 21 : [3,7,21], 22 : [3,8,24], 23 : [3,9,27],
-                                 24 : [4,4,16], 25 : [4,5,20], 26 : [4,6,24], 27 : [4,7,28], 28 : [4,8,32], 29 : [4,9,36],
-                                 30 : [5,5,25], 31 : [5,6,30], 32 : [5,7,35], 33 : [5,8,40], 34 : [5,9,45],
-                                 35 : [6,6,36], 36 : [6,7,42], 37 : [6,8,48], 38 : [6,9,54],
-                                 39 : [7,7,49], 40 : [7,8,56], 41 : [7,9,63],
-                                 42 : [8,8,64], 43 : [8,9,72],
-                                 44 : [9,9,81]
-                                 }
-
-Multiplication_Table_Pre = { 1 : [[1,1]], 2 : [[1,2]], 3 : [[1,3]], 4 : [[2,2],[1,4]], 5 : [[1,5]], 6 : [[1,6],[2,3]],
-                             7 : [[1,7]], 8 : [[1,8],[2,4]], 9 : [[1,9],[3,3]], 10 : [[2,5]], 12 : [[2,6],[3,4]],
-                             14 : [[2,7]], 15 : [[3,5]], 16 : [[4,4],[2,8]], 18 : [[2,9],[3,6]], 20 : [[4,5]],
-                             21 : [[3,7]], 24 : [[3,8],[4,6]], 25 : [[5,5]], 27 : [[3,9]], 28 : [[4,7]], 30 : [[5,6]],
-                             32 : [[4,8]], 35 : [[5,7]], 36 : [[6,6],[4,9]], 40 : [[5,8]], 42 : [[6,7]], 45 : [[5,9]],
-                             48 : [[6,8]], 49 : [[7,7]], 54 : [[6,9]], 56 : [[7,8]], 63 : [[7,9]], 72 : [[8,9]],
-                             81 : [[9,9]]
-                             }
 
 # 定时器加锁，防止多个线程一起运行
 QmutNN = QMutex()
@@ -68,6 +39,7 @@ VideoThreadEnd = False
 # 初始化定时器时间
 sec = 30
 
+# 定时器线程
 class TimeWorkThread(QThread):
     def __init__(self):
         super().__init__()
@@ -99,6 +71,7 @@ class TimeWorkThread(QThread):
 # 编辑框个数
 QLineEditCount = 0
 
+# 手势识别定时器线程
 class TimeVideoThread(QThread):
 
     def __init__(self):
@@ -203,9 +176,26 @@ class NN_Table(object):
             b = sec%10
             self.ChangeNumberTime(self.right_top_label_1, self.right_top_label_2, a, b)
 
+    def changebackimage(self):
+        self.frame.setStyleSheet('''
+            QWidget#Frame{
+                border-image:url('''+File.path[File.curpathindex-1]+''');
+                border-top:1px solid white;
+                border-bottom:1px solid white;
+                border-right:1px solid white;
+                border-top-left-radius:10px;
+                border-bottom-left-radius:10px;
+                border-top-right-radius:10px;
+                border-bottom-right-radius:10px;
+            }
+        ''')
+
     # 线程类第一次初始化,防止信号绑定多个槽函数
     FirstConnect = True
-    def Start(self):
+    def Start(self,time):
+        self.Timing = time
+        self.changebackimage()
+
         if self.FirstConnect:
             self.timevideothread = TimeVideoThread()
             self.timevideothread.timer.connect(self.countTime)
@@ -233,7 +223,7 @@ class NN_Table(object):
         self.digit = 2
         global StopFlag
         global sec
-        sec = 15
+        sec = self.Timing
         self.ChangeNumberTime(self.right_top_label_1, self.right_top_label_2, int(sec / 10), int(sec % 10))
 
         # 未超时和确定按钮
@@ -263,6 +253,10 @@ class NN_Table(object):
         self.timevideothread.SetVideoSingleton(False)
         # QmutNN.unlock()
 
+        # 初始化各个编辑框箭头指向
+        self.gifnoshow()
+
+
         # 初始化各个编辑框的数值
         self.value1 = -1
         self.value2 = -1
@@ -286,10 +280,6 @@ class NN_Table(object):
             self.value3 = 0
             self.value4 = 0
 
-            # self.right_Number_LineEdit_1.setReadOnly(True)
-            # self.right_Number_LineEdit_2.setReadOnly(True)
-            # self.right_Number_LineEdit_3.setReadOnly(False)
-            # self.right_Number_LineEdit_4.setReadOnly(False)
             self.SetReadOnly(self.right_Number_LineEdit_1,True)
             self.SetReadOnly(self.right_Number_LineEdit_2,True)
             self.SetReadOnly(self.right_Number_LineEdit_3,False)
@@ -314,10 +304,6 @@ class NN_Table(object):
             self.value3 = int(self.rightvalue/10)
             self.value4 = int(self.rightvalue%10)
 
-            # self.right_Number_LineEdit_1.setReadOnly(False)
-            # self.right_Number_LineEdit_2.setReadOnly(False)
-            # self.right_Number_LineEdit_3.setReadOnly(True)
-            # self.right_Number_LineEdit_4.setReadOnly(True)
             self.SetReadOnly(self.right_Number_LineEdit_1,False)
             self.SetReadOnly(self.right_Number_LineEdit_2,False)
             self.SetReadOnly(self.right_Number_LineEdit_3,True)
@@ -456,6 +442,18 @@ class NN_Table(object):
         self.right_Number_LineEdit_4.textChanged.connect(lambda: self.textchanged(self.right_Number_LineEdit_4,4))
 
 
+        self.right_LineEdit_label_1 = QLabel(self.frame)
+        self.right_LineEdit_label_2 = QLabel(self.frame)
+        self.right_LineEdit_label_3 = QLabel(self.frame)
+        self.right_LineEdit_label_4 = QLabel(self.frame)
+        self.right_LineEdit_label_1.setGeometry(QtCore.QRect(125, 600, 100, 100))
+        self.right_LineEdit_label_2.setGeometry(QtCore.QRect(425, 600, 100, 100))
+        self.right_LineEdit_label_3.setGeometry(QtCore.QRect(725, 600, 100, 100))
+        self.right_LineEdit_label_4.setGeometry(QtCore.QRect(865, 600, 100, 100))
+
+
+
+
         self.right_top_time_label = QLabel(self.frame)
         self.right_top_label_1 = QLabel(self.frame)
         self.right_top_label_2 = QLabel(self.frame)
@@ -465,7 +463,7 @@ class NN_Table(object):
         self.right_top_time_label.setGeometry(QtCore.QRect(500, 0, 130, 140))
         self.right_top_label_1.setGeometry(QtCore.QRect(480, 140, 80, 120))
         self.right_top_label_2.setGeometry(QtCore.QRect(550, 140, 80, 120))
-        self.right_bottom_label_1.setGeometry(QtCore.QRect(490, 720, 200, 140))
+        self.right_bottom_label_1.setGeometry(QtCore.QRect(490, 740, 200, 140))
 
         self.right_top_time_label.setPixmap(QPixmap("../images/time.png"))
         self.right_top_time_label.setScaledContents(True)  # 让图片自适应label大小
@@ -592,7 +590,7 @@ class NN_Table(object):
             tip2 = "请对着摄像头的红框摆出第二个酷酷的手势" + str(self.secondleftvalue)
             self.right_Number_LineEdit_6.setText(tip2)
 
-    # 第一次获得手势是的结果，同时保存正确的结果
+    # 第一次获得手势识别的结果，同时保存正确的结果
     def GetTipsValue(self):
         # [1] + [2] = [ ][ ]
         if self.Randomindex == 1:
@@ -650,6 +648,8 @@ class NN_Table(object):
 
     # 通过按钮查看答案
     def GetAnswer(self):
+        self.gifnoshow()
+
         self.GetAnswerFlag = True
         self.timevideothread.SetVideoSingleton(True)
         VideoSingleton.SetShowFlag(False)
@@ -711,6 +711,7 @@ class NN_Table(object):
 
             # 获得编辑框列表需要手势识别的下标
             self.Changelst = copy.deepcopy(self.lst)
+            self.show_Arrow()
             VideoThreadEnd = False
             print("九九乘法表 QLineEditCount ", QLineEditCount)
             self.timevideothread.start()
@@ -771,6 +772,10 @@ class NN_Table(object):
                 # 获得编辑框列表需要手势识别的下标
                 self.Changelst = copy.deepcopy(self.lst)
                 VideoThreadEnd = False
+
+                # 显示箭头
+                self.show_Arrow()
+
                 # print("QLineEditCount ",QLineEditCount)
                 self.timevideothread.start()
                 Button_timeout.unlock()
@@ -810,6 +815,10 @@ class NN_Table(object):
     # 手势识别中获取结果并判断结果和流程
     ErrorCount = 0
     def GetTimeVideoResult(self,result):
+
+        # 语音提醒
+        MusicSingleton.start()
+
         self.index = -1
         self.indexflag = True
         global QLineEditCount,VideoThreadEnd
@@ -819,6 +828,8 @@ class NN_Table(object):
                 self.Changelst[i] = False
                 self.index = i
                 break
+
+        self.show_Arrow()
 
         if self.index == 0:
             self.ChangeNumberImage(self.right_Number_LineEdit_1, 1, result)
@@ -850,6 +861,7 @@ class NN_Table(object):
                     # self.right_Number_LineEdit_5.setText("回答错误，重新根据提示摆出酷酷的手势")
 
                     self.Changelst = copy.deepcopy(self.lst)
+                    self.show_Arrow()
                     print("九九乘法表 GetTimeVideoResult self.Changelst",self.Changelst)
                     print("九九乘法表 GetTimeVideoResult self.lst", self.lst)
 
@@ -941,20 +953,23 @@ class NN_Table(object):
         self.ButtonFlag = True
         self.right_button_1.setText("确定")
 
-        print("九九乘法表 VideoSingleton.timer.disconnect(self.GetTimeVideoResult)")
-        VideoSingleton.timer.disconnect(self.GetTimeVideoResult)
+        # 清除箭头
+        self.gifnoshow()
 
         print("九九乘法表 设置结束标志")
+        VideoSingleton.timer.disconnect(self.GetTimeVideoResult)
+
         # 定时器结束标志
         StopFlag = True
         # 手势识别定时器结束标志
         VideoSingleton.SetShowFlag(False)
         self.timevideothread.SetVideoSingleton(True)
         self.right_bottom_label_1.setPixmap(QPixmap("../images/空.png"))
-        self.ChangeNumberTime(self.right_top_label_1, self.right_top_label_2, int(sec/10), int(sec%10))
+        # self.ChangeNumberTime(self.right_top_label_1, self.right_top_label_2, int(sec/10), int(sec%10))
 
         print("九九乘法表 DeleteFram End")
 
+    # 设置编辑框状态
     def SetReadOnly(self,right_Number_LineEdit,flag):
         if flag:
             right_Number_LineEdit.setReadOnly(True)
@@ -963,3 +978,86 @@ class NN_Table(object):
             right_Number_LineEdit.setReadOnly(False)
             right_Number_LineEdit.setStyleSheet("color:white;font:30px;background:transparent;border-width:0;")
 
+    # 显示箭头
+    def show_Arrow(self):
+        self.gifnoshow()
+
+        for i in range(0,len(self.Changelst)):
+            if self.Changelst[i]:
+                self.Arrow_indication(i)
+                break
+
+    # 设置箭头
+    def Arrow_indication(self,index):
+        if index == 0:
+            self.Arrow_gif(self.right_LineEdit_label_1)
+        elif index == 1:
+            self.Arrow_gif(self.right_LineEdit_label_2)
+        elif index == 2:
+            self.Arrow_gif(self.right_LineEdit_label_3)
+        elif index == 3:
+            self.Arrow_gif(self.right_LineEdit_label_4)
+
+    def Arrow_gif(self,right_LineEdit_label):
+        self.gif = QMovie('../images/箭头动态.gif')
+        self.gif.setScaledSize(QSize(self.right_LineEdit_label_1.width(), self.right_LineEdit_label_1.height()))
+        right_LineEdit_label.setMovie(self.gif)
+        self.gif.start()
+        # self.gif.stateChanged.disconnect(lambda :self.gifshowAgain(self.gif,self.gif.NotRunning))
+        self.gif.stateChanged.connect(lambda :self.gifshowAgain(self.gif))
+        print("************************self.gif.stateChanged.connect***********************")
+
+    def gifnoshow(self):
+        self.gif = QMovie('')
+        self.right_LineEdit_label_1.setMovie(self.gif)
+        self.right_LineEdit_label_2.setMovie(self.gif)
+        self.right_LineEdit_label_3.setMovie(self.gif)
+        self.right_LineEdit_label_4.setMovie(self.gif)
+
+
+    def gifshowAgain(self,gif):
+        state = gif.state()
+        if state == gif.Running:
+            return
+        elif state == gif.Paused:
+            return
+        elif state == gif.NotRunning:
+            gif.start()
+        print("gifshowAgain start()")
+
+    # # 显示箭头
+    # def show_Arrow(self):
+    #     self.Arrow_indication(0, False)
+    #     self.Arrow_indication(1, False)
+    #     self.Arrow_indication(2, False)
+    #     self.Arrow_indication(3, False)
+    #
+    #     for i in range(0,len(self.Changelst)):
+    #         if self.Changelst[i]:
+    #             self.Arrow_indication(i,True)
+    #             break
+    #
+    # # 设置箭头
+    # def Arrow_indication(self,index,flag):
+    #     if flag:
+    #         if index == 0:
+    #             self.right_LineEdit_label_1.setPixmap(QPixmap("../images/箭头2.png"))
+    #             self.right_LineEdit_label_1.setScaledContents(True)  # 让图片自适应label大小
+    #         elif index == 1:
+    #             self.right_LineEdit_label_2.setPixmap(QPixmap("../images/箭头2.png"))
+    #             self.right_LineEdit_label_2.setScaledContents(True)  # 让图片自适应label大小
+    #         elif index == 2:
+    #             self.right_LineEdit_label_3.setPixmap(QPixmap("../images/箭头2.png"))
+    #             self.right_LineEdit_label_3.setScaledContents(True)  # 让图片自适应label大小
+    #         elif index == 3:
+    #             self.right_LineEdit_label_4.setPixmap(QPixmap("../images/箭头2.png"))
+    #             self.right_LineEdit_label_4.setScaledContents(True)  # 让图片自适应label大小
+    #     else:
+    #         if index == 0:
+    #             self.right_LineEdit_label_1.setPixmap(QPixmap(""))
+    #         if index == 1:
+    #             self.right_LineEdit_label_2.setPixmap(QPixmap(""))
+    #         if index == 2:
+    #             self.right_LineEdit_label_3.setPixmap(QPixmap(""))
+    #         if index == 3:
+    #             self.right_LineEdit_label_4.setPixmap(QPixmap(""))

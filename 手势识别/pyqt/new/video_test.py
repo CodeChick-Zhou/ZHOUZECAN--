@@ -62,5 +62,5 @@ def startvideo(finger_model):
 
 if __name__ == "__main__":
     finger_model = loadCNN()
-    finger_model.load_weights("../model/model_2019_11_20_best.hdf5")
+    finger_model.load_weights("../model/model_2020_02_22_test.hdf5")
     startvideo(finger_model)

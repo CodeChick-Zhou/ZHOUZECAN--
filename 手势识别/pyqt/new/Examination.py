@@ -4,60 +4,13 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtGui import *
 import copy
 import random
+import pygame
+import time
 from finger_train import *
-import picture as pic
-import cv2
-import sys
-import qtawesome
+from MusicThread import MusicSingleton
 from VideoWorkThread import VideoSingleton
-
-
-# 九九乘法表
-Multiplication_Table = {0 : 1, 1 : 2,  2 : 3,  3 : 4,   4 : 5,   5 : 6,   6 : 7,   7 : 8,   8 : 9,
-                        9 : 4, 10 : 6, 11 : 8, 12 : 10, 13 : 12, 14 : 14, 15 : 16, 16 : 18,
-                        17 : 9, 18 : 12, 19 : 15, 20 : 18, 21 : 21, 22 : 24, 23 : 27,
-                        24 : 16, 25 : 20, 26 : 24, 27 : 28, 28 : 32, 29 : 36,
-                        30 : 25, 31 : 30, 32 : 35, 33 : 40, 34 : 45,
-                        35 : 36, 36 : 42, 37 : 48, 38 : 54,
-                        39 : 49, 40 : 56, 41 : 63,
-                        42 : 64, 43 : 72,
-                        44 : 81
-                        }
-
-Multiplication_Table_Formula = { 0 : [1,1,1], 1 : [1,2,2], 2 : [1,3,3], 3 : [1,4,4], 4 : [1,5,5], 5 : [1,6,6], 6 : [1,7,7], 7 : [1,8,8], 8 : [1,9,9],
-                                 9 : [2,2,4], 10 : [2,3,6], 11 : [2,4,8], 12 : [2,5,10], 13 : [2,6,12], 14 : [2,7,14], 15 : [2,8,16], 16 : [2,9,18],
-                                 17 : [3,3,9], 18 : [3,4,12], 19 : [3,5,15], 20 : [3,6,18], 21 : [3,7,21], 22 : [3,8,24], 23 : [3,9,27],
-                                 24 : [4,4,16], 25 : [4,5,20], 26 : [4,6,24], 27 : [4,7,28], 28 : [4,8,32], 29 : [4,9,36],
-                                 30 : [5,5,25], 31 : [5,6,30], 32 : [5,7,35], 33 : [5,8,40], 34 : [5,9,45],
-                                 35 : [6,6,36], 36 : [6,7,42], 37 : [6,8,48], 38 : [6,9,54],
-                                 39 : [7,7,49], 40 : [7,8,56], 41 : [7,9,63],
-                                 42 : [8,8,64], 43 : [8,9,72],
-                                 44 : [9,9,81]
-                                 }
-
-Multiplication_Table_Pre = { 1 : [[1,1]], 2 : [[1,2]], 3 : [[1,3]], 4 : [[2,2],[1,4]], 5 : [[1,5]], 6 : [[1,6],[2,3]],
-                             7 : [[1,7]], 8 : [[1,8],[2,4]], 9 : [[1,9],[3,3]], 10 : [[2,5]], 12 : [[2,6],[3,4]],
-                             14 : [[2,7]], 15 : [[3,5]], 16 : [[4,4],[2,8]], 18 : [[2,9],[3,6]], 20 : [[4,5]],
-                             21 : [[3,7]], 24 : [[3,8],[4,6]], 25 : [[5,5]], 27 : [[3,9]], 28 : [[4,7]], 30 : [[5,6]],
-                             32 : [[4,8]], 35 : [[5,7]], 36 : [[6,6],[4,9]], 40 : [[5,8]], 42 : [[6,7]], 45 : [[5,9]],
-                             48 : [[6,8]], 49 : [[7,7]], 54 : [[6,9]], 56 : [[7,8]], 63 : [[7,9]], 72 : [[8,9]],
-                             81 : [[9,9]]
-                             }
-
-# 加号 2 - 18
-Add_Table_Pre = { 2 : [[1,1]], 3 : [[1,2]], 4:[[2,2],[1,3]], 5 : [[1,4],[2,3]], 6 : [[1,5],[2,4],[3,3]],
-                  7 : [[1,6],[2,5],[3,4]], 8 : [[1,7],[2,6],[3,5],[4,4]], 9 : [[1,8],[2,7],[3,6],[4,5]],
-                  10 : [[1,9],[2,8],[3,7],[4,6],[5,5]], 11 : [[2,9],[3,8],[4,7],[5,6]], 12 : [[3,9],[4,8],[5,7],[6,6]],
-                  13 : [[4,9],[5,8],[6,7]], 14 : [[5,9],[6,8],[7,7]], 15 : [[6,9],[7,8]], 16 : [[7,9],[8,8]],
-                  17 : [[8,9]], 18 : [[9,9]]
-                  }
-
-# 减号
-Minus_Table_Pre = { 2 : [[1,1]], 3 : [[1,2],[2,1]], 4 : [[1,3],[2,2],[3,1]], 5 : [[1,4],[2,3],[3,2],[4,1]],
-                    6 : [[1,5],[2,4],[3,3],[4,2],[5,1]], 7 : [[1,6],[2,5],[3,4],[4,3],[5,2],[6,1]],
-                    8 : [[1,7],[2,6],[3,5],[4,4],[5,3],[6,2],[7,1]], 9: [[1,8],[2,7],[3,6],[4,5],[5,4],[6,3],[7,2],[8,1]]
-
-}
+from Table import *
+import GetFileName as File
 
 NExamMutx = QMutex()
 QmutVideo = QMutex()
@@ -101,6 +54,7 @@ class NormalExamTimeWorkThread(QThread):
         self.SignalButton.emit()
         NExamMutx.unlock()
 
+# 手势识别考试定时器
 class VDTimeVideoThread(QThread):
 
     def __init__(self):
@@ -130,36 +84,25 @@ class VDTimeVideoThread(QThread):
 
 
         while self.count:
-            print("VDTimeVideoThread QLineEditCount")
             while True:
-                print("VDTimeVideoThread Nsec", Nsec)
                 if self.VideoStopFlag:
-                    print("VDTimeVideoThread self.SignalButton.emit()")
                     self.SignalButton.emit()
                     QmutVideo.unlock()
                     return
 
                 self.sleep(1)  # 休眠1秒
-                print("VDTimeVideoThread sleep")
-
 
                 if self.VideoStopFlag:
-                    print("VDTimeVideoThread self.SignalButton.emit()")
                     self.SignalButton.emit()
                     QmutVideo.unlock()
                     return
 
                 if Nsec == 0:
-                    print("VDTimeVideoThread end")
                     self.EndTime()
                     break
 
                 self.timer.emit()  # 发送timer信号
-                print(" self.timer.emit()")
 
-            # print("TimeVideoThread self.VideoStopFlag ", self.VideoStopFlag)
-            # print("TimeVideoThread 结束 ",Rsec)
-            # print("QLineEditCount ", QLineEditCount)
             Nsec = Asec
             self.count -= 1
             print("self.count",self.count)
@@ -168,6 +111,7 @@ class VDTimeVideoThread(QThread):
         VideoThreadEnd = True
         QmutVideo.unlock()
 
+# 用于纠正错误的手势识别定时器
 class TimeVideoThread(QThread):
 
     def __init__(self):
@@ -231,9 +175,23 @@ class TimeVideoThread(QThread):
         VideoThreadEnd = True
         QmutVideo.unlock()
 
+# 定时三秒的定时器，平滑
 class TimeVideoSleepThread(QThread):
     timer = pyqtSignal()
     end = pyqtSignal()
+    StopFlag = False
+    Runstate = False
+
+    def RunState(self):
+        return self.Runstate
+
+    def SetStopFlag(self,state):
+        self.StopFlag = state
+
+    def initFlag(self):
+        self.Runstate = True
+        self.StopFlag = False
+
     def run(self):
         QmutVideo.lock()
         global Nsec
@@ -243,6 +201,9 @@ class TimeVideoSleepThread(QThread):
             self.sleep(1)
             print("self.sleeptime:",self.sleeptime)
 
+            if self.StopFlag:
+                self.Runstate = False
+                break
 
             if self.sleeptime == 0:
                 print("self.end.emit()")
@@ -253,10 +214,9 @@ class TimeVideoSleepThread(QThread):
 
             self.sleeptime -= 1
 
-
+        self.Runstate = False
         print("TimeVideoSleepThread end")
         QmutVideo.unlock()
-
 
 def is_number(s):
     try:
@@ -277,10 +237,14 @@ def is_number(s):
 class Examination(object):
     def __init__(self,parents):
         super().__init__()
+        # 为了获得坐标，传入父对象
+        self.curparents = parents
+
         self.frame = QWidget(parents)
         self.frame.setObjectName("Frame")
         self.frame.resize(1200, 900)
-        self.frame.setFixedSize(1200, 900)
+        self.frame.setFixedSize(self.curparents.width(), self.curparents.height())
+        # self.frame.setFixedSize(1200, 900)
 
         self.ButtonFlag = True
         self.init_frame(parents)
@@ -288,32 +252,74 @@ class Examination(object):
         self.frame1 = QWidget(parents)
         self.frame1.setObjectName("Frame1")
         self.frame1.resize(1200, 900)
-        self.frame1.setFixedSize(1200, 900)
+        self.frame1.setFixedSize(self.curparents.width(), self.curparents.height())
         self.init_frame1(parents)
 
         self.frame2 = QWidget(parents)
         self.frame2.setObjectName("Frame2")
         self.frame2.resize(1200, 900)
-        self.frame2.setFixedSize(1200, 900)
+        self.frame2.setFixedSize(self.curparents.width(), self.curparents.height())
         self.init_frame2(parents)
 
         self.frame.setVisible(False)
         self.frame1.setVisible(False)
         self.frame2.setVisible(False)
 
+    # 改变背景
+    def changebackimage(self):
+        self.frame1.setStyleSheet('''
+            QWidget#Frame1{
+                border-image:url('''+File.path[File.curpathindex-1]+''');
+                border-top:1px solid white;
+                border-bottom:1px solid white;
+                border-right:1px solid white;
+                border-top-left-radius:10px;
+                border-bottom-left-radius:10px;
+                border-top-right-radius:10px;
+                border-bottom-right-radius:10px;
+            }
+        ''')
 
+        self.frame2.setStyleSheet('''
+            QPushButton{border:none;color:white;font-size:20px}
+            QPushButton:hover{
+                    border-left:4px solid white;
+                    font-size:23px;
+                    background:#4affa5;
+                    border-top:1px solid white;
+                    border-bottom:1px solid white;
+                    border-left:1px solid white;
+                    border-top-left-radius:10px;
+                    border-bottom-left-radius:10px;
+                    border-top-right-radius:10px;
+                    border-bottom-right-radius:10px;
+            }
+
+            QWidget#Frame2{
+                border-image:url('''+File.path[File.curpathindex-1]+''');
+                border-top:1px solid white;
+                border-bottom:1px solid white;
+                border-right:1px solid white;
+                border-top-left-radius:10px;
+                border-bottom-left-radius:10px;
+                border-top-right-radius:10px;
+                border-bottom-right-radius:10px;
+            }
+        ''')
+
+    # 显示对话框
     def ShowSubmitDialog(self):
         self.SubmitDialog = QDialog()
 
-        self.SubmitDialog.resize(400,83)
-        self.SubmitDialog.setFixedSize(400,83)
+        self.SubmitDialog.resize(420,120)
+        self.SubmitDialog.setFixedSize(420,120)
 
         self.SubmitEdit = QLineEdit(self.SubmitDialog)
         self.SubmitEdit.setReadOnly(True)
-        self.SubmitEdit.resize(400,50)
-        self.SubmitEdit.setFixedSize(400, 50)
+        self.SubmitEdit.resize(420,60)
+        self.SubmitEdit.setFixedSize(420, 60)
 
-        self.SubmitEdit.setStyleSheet("color:white;background:transparent;border-width:0;border-style:outset;font:20px")
+        self.SubmitEdit.setStyleSheet("color:white;background:transparent;border-width:0;border-style:outset;font:25px")
         self.SubmitEdit.setAlignment(Qt.AlignCenter)
         self.SubmitEdit.setText(self.tip)
 
@@ -325,7 +331,7 @@ class Examination(object):
         self.Submitbutton2.setObjectName("DialogButton")
 
         self.Submitbutton1.clicked.connect(self.SubmitDialog.close)
-        self.Submitbutton1.clicked.connect(self.GetScore)
+        self.Submitbutton1.clicked.connect(self.SleepGetScore)
         self.Submitbutton2.clicked.connect(self.SubmitDialog.close)
 
         self.SubmitDialog.setWindowFlag(QtCore.Qt.FramelessWindowHint)  # 隐藏边框
@@ -336,15 +342,20 @@ class Examination(object):
         self.Submitbutton1.setFixedSize(100,30)
         self.Submitbutton2.setFixedSize(100,30)
 
-        self.Submitbutton1.move(100,50)
-        self.Submitbutton2.move(200, 50)
+        self.Submitbutton1.move(100, 80)
+        self.Submitbutton2.move(200, 80)
 
         self.SubmitDialog.setObjectName("ExDialog")
+
+        size1 = self.frame.geometry()
+        size2 = self.SubmitDialog.geometry()
+        self.SubmitDialog.move( self.curparents.x()+(size1.width()-size2.width())/2,
+                            self.curparents.y()+(size1.height()-size2.height())/2)
 
 
         self.SubmitDialog.setStyleSheet('''
         QDialog{
-                background:QLinearGradient(x1:1, y1:1, x2:0, y2:0, stop:0 rgb(211,149,155), stop:1 rgb(191,230,186));
+                background:QLinearGradient(x1:1, y1:1, x2:0, y2:0, stop:0 #EEEECE, stop:1 #6CC6CB);
                 border-top:1px solid white;
                 border-bottom:1px solid white;
                 border-left:1px solid white;
@@ -357,10 +368,10 @@ class Examination(object):
         ''')
 
         self.SubmitHLayout.setStyleSheet('''
-            QPushButton{border:none;color:white;font-size:20px}
+            QPushButton{border:none;color:white;font-size:25px}
             QPushButton:hover{
                     border-left:4px solid white;
-                    font-size:23px;
+                    font-size:28px;
                     background:#4affa5;
                     border-top:1px solid white;
                     border-bottom:1px solid white;
@@ -377,51 +388,93 @@ class Examination(object):
 
         self.SubmitDialog.exec()
 
-    # 显示对话框
+
+    # 显示设置对话框
     def ShowDialog(self):
         self.Exdialog = QDialog()
 
-        self.Exdialog.resize(300,100)
-        self.Exdialog.setFixedSize(300,100)
+        self.Exdialog.resize(420, 300)
+        self.Exdialog.setFixedSize(420, 300)
 
-        self.HLayout = QtWidgets.QWidget(self.Exdialog)
-        self.HLayout.resize(300,100)
-        self.HLayout.setFixedSize(300,100)
-        self.HLayout.setObjectName("HLayout")
-        # self.HLayout.setGeometry(QtCore.QRect(0, 0, 300, 50))
-        self.button1 = QPushButton('容易',self.HLayout)
-        self.button1.setObjectName("DialogButton")
-        self.button2 = QPushButton('中等', self.HLayout)
-        self.button2.setObjectName("DialogButton")
-        self.button3 = QPushButton('困难', self.HLayout)
-        self.button3.setObjectName("DialogButton")
+        self.ExdialogWidget = QWidget(self.Exdialog)
+        self.ExdialogWidget.resize(420, 300)
+        self.ExdialogWidget.setFixedSize(420, 300)
+        self.ExdialogWidget.setObjectName("dialog")
 
-        self.button1.clicked.connect(self.Exdialog.close)
-        self.button1.clicked.connect(lambda :self.SetDifficulty(0))
-        self.button2.clicked.connect(self.Exdialog.close)
-        self.button2.clicked.connect(lambda: self.SetDifficulty(1))
-        self.button3.clicked.connect(self.Exdialog.close)
-        self.button3.clicked.connect(lambda: self.SetDifficulty(2))
+        self.label1 = QLabel(self.ExdialogWidget)
+        self.label1.setText("时间设置")
+        self.label1.setObjectName('label1')
+        self.label1.setGeometry(QtCore.QRect(20, 40, 100, 80))
+
+        self.label2 = QLabel(self.ExdialogWidget)
+        self.label2.setObjectName('label1')
+        self.label2.setText("题目数量")
+        self.label2.setGeometry(QtCore.QRect(20, 110, 100, 80))
+
+        self.ExdialogWidget.setStyleSheet("QLabel#label1{font-size:20px}")
+
+        self.label1_button_left = QPushButton(self.ExdialogWidget)
+        self.label1_button_right = QPushButton(self.ExdialogWidget)
+        self.label1_button_left.setObjectName('btn1')
+        self.label1_button_right.setObjectName('btn2')
+
+        self.label1_button_left.setGeometry(QtCore.QRect(130, 50, 50, 50))
+        self.label1_button_right.setGeometry(QtCore.QRect(300, 50, 50, 50))
+        self.label1_button_left.clicked.connect(self.time_reduce)
+        self.label1_button_right.clicked.connect(self.time_add)
+
+        self.label2_button_left = QPushButton(self.ExdialogWidget)
+        self.label2_button_right = QPushButton(self.ExdialogWidget)
+        self.label2_button_left.setObjectName('btn1')
+        self.label2_button_right.setObjectName('btn2')
+
+        self.label2_button_left.setGeometry(QtCore.QRect(130, 120, 50, 50))
+        self.label2_button_right.setGeometry(QtCore.QRect(300, 120, 50, 50))
+        self.label2_button_left.clicked.connect(self.Number_reduce)
+        self.label2_button_right.clicked.connect(self.Number_add)
+
+        self.label1_LineEdit = QLineEdit(self.ExdialogWidget)
+        self.label1_LineEdit.setGeometry(QtCore.QRect(190, 60, 100, 40))
+        self.label1_LineEdit.setText(str(self.Timing))
+        self.label1_LineEdit.setAlignment(Qt.AlignCenter)
+        self.label1_LineEdit.setReadOnly(True)
+
+        self.label2_LineEdit = QLineEdit(self.ExdialogWidget)
+        self.label2_LineEdit.setGeometry(QtCore.QRect(190, 130, 100, 40))
+        self.label2_LineEdit.setText(str(self.NumberQuestions))
+        self.label2_LineEdit.setAlignment(Qt.AlignCenter)
+        self.label2_LineEdit.setReadOnly(True)
+
+        self.sbutton = QPushButton(self.ExdialogWidget)
+        self.sbutton.setText("确定")
+        self.sbutton.clicked.connect(self.Exdialog.close)
+        self.sbutton.setGeometry(QtCore.QRect(280, 230, 100, 40))
+        self.sbutton.setStyleSheet('''
+            QPushButton{
+                background:#a1f8ba;
+                border-top-left-radius:10px;
+                border-bottom-left-radius:10px;
+                border-top-right-radius:10px;
+                border-bottom-right-radius:10px;
+            }
+            QPushButton:hover{font-size:18px;background:#a1f8ba}
+        ''')
+
+        # self.Exdialog.setObjectName("ExDialog")
+
+        self.Exdialog.setWindowTitle('选择难度')
+        self.Exdialog.setWindowModality(Qt.ApplicationModal)
 
         self.Exdialog.setWindowFlag(QtCore.Qt.FramelessWindowHint)  # 隐藏边框
 
         self.Exdialog.setWindowOpacity(1)  # 设置窗口透明度
         self.Exdialog.setAttribute(QtCore.Qt.WA_TranslucentBackground)  # 设置窗口背景透明
 
-        self.button1.setFixedSize(100,50)
-        self.button2.setFixedSize(100,50)
-        self.button3.setFixedSize(100,50)
-
-        self.button1.move(0,30)
-        self.button2.move(100, 30)
-        self.button3.move(200, 30)
-
-        self.Exdialog.setObjectName("ExDialog")
-
+        # EAE5C9  6CC6CB
 
         self.Exdialog.setStyleSheet('''
-        QWidget#HLayout{
-                background:QLinearGradient(x1:1, y1:1, x2:0, y2:0, stop:0 rgb(211,149,155), stop:1 rgb(191,230,186));
+        QWidget#dialog{
+                background:QLinearGradient(x1:1, y1:1, x2:0, y2:0, stop:0 #EEEECE, stop:1 #6CC6CB);
                 border-top:1px solid white;
                 border-bottom:1px solid white;
                 border-left:1px solid white;
@@ -431,31 +484,68 @@ class Examination(object):
                 border-top-left-radius:10px;
                 border-bottom-left-radius:10px;
                 }
+        QLineEdit{
+                background: rgb(230,230,230);
+                border-radius: 8px;
+                border:1px solid rgb(180, 180, 180);
+                font-size:25px}
+
+        QPushButton#btn1{border-image: url(./images/左箭头.png)}
+        QPushButton#btn1:hover{border-image: url(./images/左箭头选中.png)}
+        QPushButton#btn2{border-image: url(./images/右箭头.png)}
+        QPushButton#btn2:hover{border-image: url(./images/右箭头选中.png)}
         ''')
 
-        self.HLayout.setStyleSheet('''        
-            QPushButton{border:none;color:white;font-size:20px}
-            QPushButton:hover{
-                    border-left:4px solid white;
-                    font-size:23px;
-                    background:#4affa5;
-                    border-top:1px solid white;
-                    border-bottom:1px solid white;
-                    border-left:1px solid white;
-                    border-top-left-radius:10px;
-                    border-bottom-left-radius:10px;
-                    border-top-right-radius:10px;
-                    border-bottom-right-radius:10px;
-            }
-        ''')
-
-        self.Exdialog.setWindowTitle('选择难度')
-        self.Exdialog.setWindowModality(Qt.ApplicationModal)
+        size1 = self.frame.geometry()       # 获取位置和尺寸
+        size2 = self.Exdialog.geometry()
+        # 计算居中的位置
+        self.Exdialog.move( self.curparents.x()+(size1.width()-size2.width())/2,
+                            self.curparents.y()+(size1.height()-size2.height())/2)
 
         self.Exdialog.exec()
 
-    # 获得手势识别的值
+    # 减少时间
+    def time_reduce(self):
+        self.Timing = int(self.label1_LineEdit.text())
+        if self.Timing == 30:
+            return
+        else:
+            self.Timing -= 10
+            self.label1_LineEdit.setText(str(self.Timing))
+
+    # 增加时间
+    def time_add(self):
+        self.Timing = int(self.label1_LineEdit.text())
+        if self.Timing == 300:
+            return
+        else:
+            self.Timing += 10
+            self.label1_LineEdit.setText(str(self.Timing))
+        return
+
+    # 题目数量减少
+    def Number_reduce(self):
+        self.NumberQuestions = int(self.label2_LineEdit.text())
+        if self.NumberQuestions == 10:
+            return
+        else:
+            self.NumberQuestions -= 10
+            self.label2_LineEdit.setText(str(self.NumberQuestions))
+
+    # 题目数量增多
+    def Number_add(self):
+        self.NumberQuestions = int(self.label2_LineEdit.text())
+        if self.NumberQuestions == 30:
+            return
+        else:
+            self.NumberQuestions += 10
+            self.label2_LineEdit.setText(str(self.NumberQuestions))
+
+    # 获得手势识别的值，用于修改答案
     def GetTimeVideoResult(self,result):
+
+        # 语音提醒
+        MusicSingleton.start()
 
         self.NEQuestionCur[self.QuestionIndex][self.GAnswerIndex[0]] = result
         if self.GAnswerIndex[0] == 0:
@@ -471,6 +561,7 @@ class Examination(object):
         del self.GAnswer[0]
         length = len(self.GAnswer)
 
+        self.show_Arrow()
         if length==1:
             self.right_Number_LineEdit_6.setText("请对着摄像头的框框摆出第二个酷酷的手势"+str(self.GAnswer[0]))
             # del self.GAnswer[0]
@@ -489,11 +580,12 @@ class Examination(object):
                 self.right_Number_LineEdit_6.setText("")
                 self.right_bottom_label_1.setPixmap(QPixmap("../images/对号.png"))
                 self.right_bottom_label_1.setScaledContents(True)  # 让图片自适应label大小
+
+
                 VideoSingleton.SetShowFlag(False)
                 QmutVideo.unlock()
                 return
             else:
-
                 QmutVideo.lock()
                 global QLineEditCount,VideoTime
                 if VideoTime == 1:
@@ -502,7 +594,13 @@ class Examination(object):
                     self.right_bottom_label_1.setPixmap(QPixmap("../images/对号.png"))
                     self.right_bottom_label_1.setScaledContents(True)  # 让图片自适应label大小
 
+
                     self.GetAnswer()
+                    self.gifnoshow()
+                    # self.Arrow_indication(0, False)
+                    # self.Arrow_indication(1, False)
+                    # self.Arrow_indication(2, False)
+                    # self.Arrow_indication(3, False)
 
                     for i in range(0,len(self.GAnswerIndex)):
                         if self.GAnswerIndex[i] == 0:
@@ -518,6 +616,7 @@ class Examination(object):
                             self.ChangeNumberImage(self.right_Number_LineEdit_4, self.GAnswer[i])
                             self.NEQuestionCur[self.QuestionIndex][3] = self.GAnswer[i]
 
+                    # 重新初始化次数
                     VideoTime = 2
 
                     self.right_button_1.setEnabled(True)
@@ -538,6 +637,7 @@ class Examination(object):
                         QLineEditCount += 1
 
                 self.GetAnswer()
+                self.show_Arrow()
 
                 self.right_Number_LineEdit_5.setText("手势识别输入错误，请检查自己的手势，再次摆出手势")
                 self.right_Number_LineEdit_6.setText("请对着摄像头的框框摆出酷酷的手势" + str(self.GAnswer[0]))
@@ -550,14 +650,17 @@ class Examination(object):
 
         return
 
-
     def VideoButtonConnect(self):
         return
 
+    # 手势识别三秒之后下一题
     def VDend(self):
 
         QmutVideo.lock()
         QmutVideo.unlock()
+
+        if self.timevideosleepthread.StopFlag:
+            return
 
         global QLineEditCount,Nsec,Asec
 
@@ -582,20 +685,30 @@ class Examination(object):
         self.GetAnswer()
         self.VDcount = len(self.GAnswer)
         QLineEditCount = len(self.GAnswer)
-        Nsec = int(self.Timing/10)
-        Asec = int(self.Timing/10)
+        Nsec = int(self.Timing/self.NumberQuestions)
+        Asec = int(self.Timing/self.NumberQuestions)
         self.ChangeTime()
 
         self.right_Number_LineEdit_5.setText("请根据题目，摆出相应的手势,使得公式相等")
-        self.right_Number_LineEdit_6.setText("请输入第一个框")
+        self.right_Number_LineEdit_6.setText("")
 
+        # 显示题目
         self.VdShowExam()
 
+        # 显示箭头
+        self.show_Arrow()
         self.VDtimevideothread.start()
         # QmutVideo.unlock()
 
     # 手势识别调用的函数
     def VDGetTimeVideoResult(self,result):
+
+        if self.VDtimevideothread.VideoStopFlag:
+            return
+
+        # 语音提醒
+        MusicSingleton.start()
+
         print("VDGetTimeVideoResult() start")
         self.NEQuestionCur[self.QuestionIndex][self.GAnswerIndex[0]] = result
         if self.GAnswerIndex[0] == 0:
@@ -611,7 +724,7 @@ class Examination(object):
 
         self.VDcount -= 1
 
-
+        self.show_Arrow()
         if self.VDcount == 0:
             global Nsec
             if self.QuestionIndex == self.NumberQuestions-1:
@@ -621,6 +734,7 @@ class Examination(object):
                 Nsec = 3 # 3秒之后进入下一题
                 self.ChangeTime()
                 self.right_button_2.setEnabled(False)
+                self.timevideosleepthread.initFlag()
                 self.timevideosleepthread.start()
             else:
                 self.IsTrue()
@@ -630,6 +744,7 @@ class Examination(object):
                 Nsec = 3 # 3秒之后进入下一题
                 self.ChangeTime()
                 print("self.ChangeTime()")
+                self.timevideosleepthread.initFlag()
                 self.timevideosleepthread.start()
         else:
             self.right_Number_LineEdit_5.setText("请根据题目，摆出相应的手势,使得公式相等")
@@ -641,6 +756,8 @@ class Examination(object):
     FirstVDExam = True
     FirstErrorVideo = True
     def VideoExam(self):
+        self.changebackimage()
+
         self.VDstart = True
         self.NDstart = False
 
@@ -660,8 +777,9 @@ class Examination(object):
         global NExamStopFlag,Nsec,QLineEditCount,Asec
         NExamStopFlag = False
         print("self.Timing:",self.Timing)
-        Nsec = int(self.Timing/10)
-        Asec = int(self.Timing/10)
+        print("self.NumberQuestions:", self.NumberQuestions)
+        Nsec = int(self.Timing/self.NumberQuestions)
+        Asec = int(self.Timing/self.NumberQuestions)
         self.ChangeTime()
 
         # 非观察模式
@@ -694,7 +812,7 @@ class Examination(object):
         VideoSingleton.timer.connect(self.VDGetTimeVideoResult)
 
         # 获得题目
-        self.NormalExamQuestion()
+        self.ExamQuestion()
 
         # 当前题目下标
         self.QuestionIndex = 0
@@ -712,18 +830,16 @@ class Examination(object):
 
         print("self.VDcount",self.VDcount,"QLineEditCount",QLineEditCount)
 
-        # for i in range(0, len(self.NEStatus[self.QuestionIndex])):
-        #     if self.NEStatus[self.QuestionIndex][i]:
-        #         QLineEditCount += 1
-
-
         self.right_Number_LineEdit_5.setText("请根据题目，摆出相应的手势,使得公式相等")
-        self.right_Number_LineEdit_6.setText("请输入第一个框")
+        self.right_Number_LineEdit_6.setText("")
 
         VideoSingleton.SetShowFlag(True)
+
+        # 显示箭头
+        self.show_Arrow()
+
         self.VDtimevideothread.start()
         print("self.VDtimevideothread.start()")
-
 
     # 开始正常开始
     FirstNExam = True
@@ -731,6 +847,8 @@ class Examination(object):
     NDstart = False
     VDstart = False
     def NormalExam(self):
+        self.changebackimage()
+
         self.VDstart = False
         self.NDstart = True
 
@@ -782,7 +900,7 @@ class Examination(object):
         VideoSingleton.timer.connect(self.GetTimeVideoResult)
 
         # 获得题目
-        self.NormalExamQuestion()
+        self.ExamQuestion()
 
         # 当前题目下标
         self.QuestionIndex = 0
@@ -790,6 +908,8 @@ class Examination(object):
         # 显示题目
         self.right_bottom_label_1.setPixmap(QPixmap("../images/空.png"))
         self.right_bottom_label_1.setScaledContents(True)  # 让图片自适应label大小
+        self.right_Number_LineEdit_5.setText("请根据题目，在框中输入正确的数字,使得公式相等")
+        self.right_Number_LineEdit_6.setText("")
         self.ShowExam()
 
         # 开始定时器
@@ -827,6 +947,30 @@ class Examination(object):
         self.SetReadOnly(self.right_Number_LineEdit_5,True)
         self.SetReadOnly(self.right_Number_LineEdit_6,True)
 
+        self.right_LineEdit_label_1 = QLabel(self.frame1)
+        self.right_LineEdit_label_2 = QLabel(self.frame1)
+        self.right_LineEdit_label_3 = QLabel(self.frame1)
+        self.right_LineEdit_label_4 = QLabel(self.frame1)
+        self.right_LineEdit_label_1.setGeometry(QtCore.QRect(125, 600, 100, 100))
+        self.right_LineEdit_label_2.setGeometry(QtCore.QRect(425, 600, 100, 100))
+        self.right_LineEdit_label_3.setGeometry(QtCore.QRect(725, 600, 100, 100))
+        self.right_LineEdit_label_4.setGeometry(QtCore.QRect(865, 600, 100, 100))
+
+        # self.right_LineEdit_label_1.setPixmap(QPixmap("../images/箭头2.png"))
+        # self.right_LineEdit_label_1.setScaledContents(True)  # 让图片自适应label大小
+        # self.right_LineEdit_label_1.setPixmap(QPixmap("../images/箭头2.png"))
+        # self.right_LineEdit_label_1.setScaledContents(True)  # 让图片自适应label大小
+        # self.right_LineEdit_label_2.setPixmap(QPixmap("../images/箭头2.png"))
+        # self.right_LineEdit_label_2.setScaledContents(True)  # 让图片自适应label大小
+        # self.right_LineEdit_label_3.setPixmap(QPixmap("../images/箭头2.png"))
+        # self.right_LineEdit_label_3.setScaledContents(True)  # 让图片自适应label大小
+        # self.right_LineEdit_label_4.setPixmap(QPixmap("../images/箭头2.png"))
+        # self.right_LineEdit_label_4.setScaledContents(True)  # 让图片自适应label大小
+        # self.right_LineEdit_label_4.setPixmap(QPixmap(""))
+        # self.right_LineEdit_label_4.setScaledContents(True)  # 让图片自适应label大小
+
+
+
         # self.right_Number_LineEdit_6.setText("请填写下列空格，使得等式成立")
 
         # self.right_Number_LineEdit_1.setAttribute(QtCore.Qt.WA_MacShowFocusRect,0)
@@ -854,9 +998,11 @@ class Examination(object):
         self.right_top_label_1.setGeometry(QtCore.QRect(440, 140, 80, 120))
         self.right_top_label_2.setGeometry(QtCore.QRect(510, 140, 80, 120))
         self.right_top_label_3.setGeometry(QtCore.QRect(585, 140, 80, 120))
-        self.right_bottom_label_1.setGeometry(QtCore.QRect(490, 650, 200, 140))
-        self.right_bottom_LineEdit.setGeometry(QtCore.QRect(530,820, 200,60))
-        self.right_bottom_LineEdit.setStyleSheet("color:white;font:32px;background:transparent;border-width:0;border-style:outset")
+        self.right_bottom_label_1.setGeometry(QtCore.QRect(490, 700, 168, 122))
+
+        # 显示第几题
+        self.right_bottom_LineEdit.setGeometry(QtCore.QRect(530,830, 200,60))
+        self.right_bottom_LineEdit.setStyleSheet("color:black;font:32px;background:transparent;border-width:0;border-style:outset")
 
 
         self.right_top_time_label.setPixmap(QPixmap("../images/time.png"))
@@ -993,7 +1139,7 @@ class Examination(object):
         self.pushButton_close.clicked.connect(parents.close)
 
         self.verticalLayoutWidget = QtWidgets.QWidget(self.frame)
-        self.verticalLayoutWidget.setGeometry(QtCore.QRect(450, 200, 300, 600))
+        self.verticalLayoutWidget.setGeometry(QtCore.QRect(450, 200, 300, 680))
         self.verticalLayoutWidget.setObjectName("ButtonWidget")
         self.verticalLayout = QtWidgets.QVBoxLayout(self.verticalLayoutWidget)
 
@@ -1032,32 +1178,35 @@ class Examination(object):
         # self.pushButton_4.clicked.connect(self.close)
 
         self.frame.setStyleSheet('''
-            QWidget#Frame{
+        QWidget#Frame{
                 border-image:url(../images/screen4.jpg);
                 border-top:1px solid white;
                 border-bottom:1px solid white;
+                border-left:1px solid white;
                 border-right:1px solid white;
+                border-top-right-radius:10px;
+                border-bottom-right-radius:10px;
+                border-top-left-radius:10px;
+                border-bottom-left-radius:10px;
+            }
+        ''')
+
+
+        self.verticalLayoutWidget.setStyleSheet('''
+            QPushButton{border:none;color:white;font-size:25px}
+            QPushButton:hover{
+                border-left:4px solid white;
+                font-size:23px;
+                background:#4affa5;
+                border-top:1px solid white;
+                border-bottom:1px solid white;
+                border-left:1px solid white;
                 border-top-left-radius:10px;
                 border-bottom-left-radius:10px;
                 border-top-right-radius:10px;
                 border-bottom-right-radius:10px;
-            }
+                }
         ''')
-        self.verticalLayoutWidget.setStyleSheet('''
-                    QPushButton{border:none;color:white;font-size:20px}
-                    QPushButton:hover{
-                        border-left:4px solid white;
-                        font-size:23px;
-                        background:#4affa5;
-                        border-top:1px solid white;
-                        border-bottom:1px solid white;
-                        border-left:1px solid white;
-                        border-top-left-radius:10px;
-                        border-bottom-left-radius:10px;
-                        border-top-right-radius:10px;
-                        border-bottom-right-radius:10px;
-                        }
-                ''')
 
     # 考试结束页面
     correct = 0     # 正确的题目数
@@ -1112,8 +1261,25 @@ class Examination(object):
             }
         ''')
 
-    # ********************************方法****************************
 
+        self.label_star = QLabel(self.frame2)
+        self.label_star.setGeometry(QtCore.QRect(20, 20, 40, 40))
+        self.label_star.setPixmap(QPixmap("../images/star.png"))
+        self.label_star.setScaledContents(True)  # 让图片自适应label大小
+
+        self.LineEdit_star = QLineEdit(self.frame2)
+        self.LineEdit_star.setGeometry(QtCore.QRect(70, 25, 80, 30))
+        self.LineEdit_star.setReadOnly(True)
+        self.LineEdit_star.setStyleSheet('''
+                                        background: rgb(230,230,230);
+                                        border-radius: 5px;
+                                        border:1px solid rgb(180, 180, 180);
+                                        font-size:25px
+                                        ''')
+        self.LineEdit_star.setText(str(File.curstars))
+        self.LineEdit_star.setAlignment(Qt.AlignCenter)
+
+    # ********************************方法****************************
 
     ViewFlag = False
     def ViewQuestion(self):
@@ -1151,7 +1317,7 @@ class Examination(object):
         self.right_button_5.setHidden(True)
         self.right_button_2.setHidden(False)
 
-
+    # 改变计时时间
     def ChangeTime(self):
         global Nsec
         if Nsec <= 9:
@@ -1175,24 +1341,25 @@ class Examination(object):
     # Easy-180  Medium-120   difficult-180
     Timing = 180
     # Number of questions
-    NumberQuestions = 2
-    def SetDifficulty(self,result):
-        global Nsec,Asec
-        self.Difficulty = result
-        print("Difficulty :",self.Difficulty)
-        if self.Difficulty == 0 :
-            self.Timing = 180
-        elif self.Difficulty == 1:
-            self.Timing = 120
-        elif self.Difficulty == 2:
-            self.Timing = 60
+    NumberQuestions = 10
 
-        Nsec = self.Timing
-        Asec = Nsec
-
-        self.ChangeTime()
-
-        # print("SetDifficulty() Nsec",Nsec)
+    # def SetDifficulty(self,result):
+    #     global Nsec,Asec
+    #     self.Difficulty = result
+    #     print("Difficulty :",self.Difficulty)
+    #     if self.Difficulty == 0 :
+    #         self.Timing = 180
+    #     elif self.Difficulty == 1:
+    #         self.Timing = 120
+    #     elif self.Difficulty == 2:
+    #         self.Timing = 60
+    #
+    #     Nsec = self.Timing
+    #     Asec = Nsec
+    #
+    #     self.ChangeTime()
+    #
+    #     # print("SetDifficulty() Nsec",Nsec)
 
 
     def GetScoreVDNE(self):
@@ -1215,17 +1382,42 @@ class Examination(object):
 
         self.tip1 = "本次一共有" + str(self.NumberQuestions) + "题，回答正确为" + str(self.correct) + "道"
         self.frame2_QlineEdit1.setText(self.tip1)
-        self.tip2 = "你的得分为:" + str(self.score) + "分"
+        # self.tip2 = "你的得分为:" + str(self.score) + "分"
+        # self.frame2_QlineEdit2.setText(self.tip2)
+
+
+        # 设置获得的星星
+        staradd = 0
+        if self.score < 60:
+            staradd = 0
+        elif self.score < 70:
+            staradd = 1
+        elif self.score < 80:
+            staradd = 2
+        elif self.score < 90:
+            staradd = 3
+        elif self.score < 100:
+            staradd = 4
+        elif self.score == 100:
+            staradd = 5
+
+        print("File.curstars", File.curstars)
+        File.curstars += staradd
+        print("File.curstars",File.curstars)
+
+        self.tip2 = "你的得分为:" + str(self.score) + "分,获得了"+str(staradd)+"个⭐"
         self.frame2_QlineEdit2.setText(self.tip2)
 
-
-    #
-    # def SubGetScore(self):
-    #     self.GetScore()
-
+        self.LineEdit_star.setText(str(File.curstars))
+        File.writefilestar()
 
     # 获得分数
     def GetScore(self):
+        # 消除箭头
+        self.GAnswerIndex.clear()
+        self.GAnswer.clear()
+        self.gifnoshow()
+
         self.frame.setVisible(False)
         self.frame1.setVisible(False)
         self.frame2.setVisible(True)
@@ -1233,19 +1425,29 @@ class Examination(object):
         VideoSingleton.SetShowFlag(False)
 
 
+        # 手势识别模式
         if self.VDstart:
             self.VDtimevideothread.SetVideoSingleton(True)
             self.right_button_2.setHidden(True)
+            if self.timevideosleepthread.Runstate:
+                self.timevideosleepthread.SetStopFlag(True)
             QmutVideo.lock()
+
+            # 注意这里
+            # self.timevideosleepthread.SetStopFlag(True)
+
             self.GetScoreVDNE()
             QmutVideo.unlock()
-
+        # 正常模式
         else:
             global NExamStopFlag
             NExamStopFlag = True
             NExamMutx.lock()
             self.GetScoreVDNE()
             NExamMutx.unlock()
+
+    def SleepGetScore(self):
+        self.GetScore()
 
 
     # 提交试卷
@@ -1311,7 +1513,7 @@ class Examination(object):
     NEAnswerCur = []
     # 编辑框状态
     NEStatus = []
-    def NormalExamQuestion(self):
+    def ExamQuestion(self):
         # 答案
         self.NEQuestion = []
         # 题目现状
@@ -1323,7 +1525,7 @@ class Examination(object):
 
         count = self.NumberQuestions
         while count:
-            i = random.randint(0,4)
+            i = random.randint(0,6)
             # 加法
             if i == 0:
                 self.value = random.randint(2,18)
@@ -1482,7 +1684,6 @@ class Examination(object):
         self.right_bottom_LineEdit.setText(curstr)
         print("VdShowExam() curstr",curstr)
 
-
     # 开始显示
     def ShowExam(self):
         # 判断是否为第一题，第一题没有上一题
@@ -1620,6 +1821,7 @@ class Examination(object):
         if self.IsTrue():
             self.right_button_4.setHidden(True)
             self.right_Number_LineEdit_5.setText("回答正确")
+            self.right_Number_LineEdit_6.setText("")
             self.right_bottom_label_1.setPixmap(QPixmap("../images/对号.png"))
             self.right_bottom_label_1.setScaledContents(True)  # 让图片自适应label大小
             self.ShowQLineEdit()        # 显示题目
@@ -1641,6 +1843,7 @@ class Examination(object):
         else:
             self.right_button_4.setHidden(False)
             self.right_Number_LineEdit_5.setText("回答错误，请试着修改答案")
+            self.right_Number_LineEdit_6.setText("")
             self.right_bottom_label_1.setPixmap(QPixmap("../images/错号.png"))
             self.right_bottom_label_1.setScaledContents(True)  # 让图片自适应label大小
             self.ShowQLineEdit()    # 显示题目
@@ -1695,6 +1898,7 @@ class Examination(object):
             global QLineEditCount,Nsec,Asec,VideoTime
             Asec = 10
             Nsec = Asec
+            self.ChangeTime()
             QLineEditCount = 0
 
             for i in range(0,len(self.NEStatus[self.QuestionIndex])):
@@ -1715,9 +1919,10 @@ class Examination(object):
 
             VideoTime = 2
 
+            self.show_Arrow()
+
             self.timevideothread.start()
             return
-
 
     # 获得答案
     GAnswer=[]
@@ -1738,7 +1943,6 @@ class Examination(object):
         else:
             right_Number_LineEdit.setReadOnly(False)
             right_Number_LineEdit.setStyleSheet("color:white;font:30px;background:transparent;border-width:0;")
-
 
     # 显示题目
     def ShowQLineEdit(self):
@@ -1796,9 +2000,6 @@ class Examination(object):
         self.ChangeNumberImage(self.right_Number_LineEdit_4,fourthvalue)
 
 
-
-
-
         print("ShowQLineEdit() end")
 
     # 改变时间
@@ -1824,3 +2025,53 @@ class Examination(object):
         else:
             self.right_top_label_3.setPixmap(QPixmap("../images/空.png"))
             self.right_top_label_3.setScaledContents(True)  # 让图片自适应label大小
+
+
+
+    # 显示箭头
+    def show_Arrow(self):
+        self.gifnoshow()
+
+        if len(self.GAnswerIndex) >= 1:
+            self.Arrow_indication(self.GAnswerIndex[0])
+
+    # 设置箭头
+    def Arrow_indication(self,index):
+        if index == 0:
+            self.Arrow_gif(self.right_LineEdit_label_1)
+        elif index == 1:
+            self.Arrow_gif(self.right_LineEdit_label_2)
+        elif index == 2:
+            self.Arrow_gif(self.right_LineEdit_label_3)
+        elif index == 3:
+            self.Arrow_gif(self.right_LineEdit_label_4)
+
+    def Arrow_gif(self,right_LineEdit_label):
+        self.gif = QMovie('../images/箭头动态.gif')
+        self.gif.setScaledSize(QSize(self.right_LineEdit_label_1.width(), self.right_LineEdit_label_1.height()))
+        right_LineEdit_label.setMovie(self.gif)
+        self.gif.start()
+        # self.gif.stateChanged.disconnect(lambda :self.gifshowAgain(self.gif,self.gif.NotRunning))
+        self.gif.stateChanged.connect(lambda :self.gifshowAgain(self.gif))
+
+    def gifnoshow(self):
+        self.gif = QMovie('')
+        self.right_LineEdit_label_1.setMovie(self.gif)
+        self.right_LineEdit_label_2.setMovie(self.gif)
+        self.right_LineEdit_label_3.setMovie(self.gif)
+        self.right_LineEdit_label_4.setMovie(self.gif)
+
+    def gifshowAgain(self,gif):
+        state = gif.state()
+        if state == gif.Running:
+            return
+        elif state == gif.Paused:
+            return
+        elif state == gif.NotRunning:
+            gif.start()
+        print("gifshowAgain start()")
+
+
+
+
+
